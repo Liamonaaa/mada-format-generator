@@ -31,35 +31,75 @@
         </p>
       </header>
 
-      <section class="format-picker default-name-panel" aria-label="שם קבוע">
-        <div class="picker-header default-name-header">
+      <section class="format-picker settings-panel" aria-label="הגדרות קבועות">
+        <div class="picker-header settings-header">
           <div>
-            <h2 class="section-title">שם קבוע</h2>
-            <p class="section-copy">שמרו שם אחד למילוי אוטומטי בכל הפורמטים הרלוונטיים.</p>
+            <h2 class="section-title">הגדרות קבועות</h2>
+            <p class="section-copy">שמרו ערכים קבועים למילוי אוטומטי בכל הפורמטים הרלוונטיים.</p>
           </div>
         </div>
 
-        <div class="default-name-controls">
-          <div class="field-group default-name-field">
-            <label class="field-label" for="default-name-input">שם קבוע</label>
-            <input
-              class="field-input default-name-input"
-              id="default-name-input"
-              type="text"
-              autocomplete="off"
-              placeholder="הקלידו שם קבוע"
-            />
-          </div>
+        <div class="settings-grid">
+          <section class="setting-card" aria-label="שם קבוע">
+            <div>
+              <h3 class="setting-title">שם קבוע</h3>
+              <p class="setting-copy">שמרו שם אחד שיופיע אוטומטית בכל שדות השם.</p>
+            </div>
 
-          <div class="default-name-actions">
-            <button class="action-button primary" id="default-name-save" type="button">שמור</button>
-            <button class="action-button secondary" id="default-name-clear" type="button">
-              נקה שם קבוע
-            </button>
-          </div>
+            <div class="setting-controls">
+              <div class="field-group setting-field">
+                <label class="field-label" for="fixed-name-input">שם קבוע</label>
+                <input
+                  class="field-input"
+                  id="fixed-name-input"
+                  type="text"
+                  autocomplete="off"
+                  placeholder="הקלידו שם קבוע"
+                />
+              </div>
+
+              <div class="setting-actions">
+                <button class="action-button primary" id="fixed-name-save" type="button">שמור</button>
+                <button class="action-button secondary" id="fixed-name-clear" type="button">
+                  נקה שם קבוע
+                </button>
+              </div>
+            </div>
+
+            <div class="settings-state" id="fixed-name-feedback" aria-live="polite"></div>
+          </section>
+
+          <section class="setting-card" aria-label="תיוג פיקוד קבוע">
+            <div>
+              <h3 class="setting-title">תיוג פיקוד קבוע</h3>
+              <p class="setting-copy">שמרו תיוג דיסקורד קבוע שיוזן אוטומטית בכל הפורמטים.</p>
+            </div>
+
+            <div class="setting-controls">
+              <div class="field-group setting-field">
+                <label class="field-label" for="fixed-command-tag-input">תיוג פיקוד קבוע</label>
+                <input
+                  class="field-input"
+                  id="fixed-command-tag-input"
+                  type="text"
+                  autocomplete="off"
+                  placeholder="<@1271186918658408470>"
+                />
+              </div>
+
+              <div class="setting-actions">
+                <button class="action-button primary" id="fixed-command-tag-save" type="button">
+                  שמור
+                </button>
+                <button class="action-button secondary" id="fixed-command-tag-clear" type="button">
+                  נקה תיוג קבוע
+                </button>
+              </div>
+            </div>
+
+            <div class="settings-state" id="fixed-command-tag-feedback" aria-live="polite"></div>
+          </section>
         </div>
-
-        <div class="settings-state" id="default-name-feedback" aria-live="polite"></div>
       </section>
 
       <section class="format-picker" aria-label="בחירת פורמט">

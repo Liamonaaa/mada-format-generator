@@ -1,5 +1,8 @@
-﻿const STORAGE_KEY = "mada-format-generator-state";
-const DEFAULT_NAME_KEY = "mada-format-generator-default-name";
+﻿const STORAGE_KEYS = {
+  formState: "mada-format-generator-state",
+  fixedName: "mada-format-generator-fixed-name",
+  fixedCommandTag: "mada-format-generator-fixed-command-tag",
+};
 
 const formatDefinitions = [
   {
@@ -7,12 +10,12 @@ const formatDefinitions = [
     tabTitle: "ירידה מתפקיד",
     tabCopy: "ליצירת פורמט מסודר על ירידה מתפקיד.",
     title: "פורמט ירידה מתפקיד",
-    defaultNameFieldId: "name",
     fields: [
       { id: "name", label: "שם", placeholder: "הקלידו שם" },
       { id: "reason", label: "סיבה", placeholder: "מהי הסיבה?" },
       { id: "amount", label: "כמות ירידה מתפקיד", placeholder: "הקלידו כמות" },
       { id: "mdaAmount", label: "כמות המדא שיש", placeholder: "הקלידו כמות" },
+      { id: "commandTag", label: "תיוג הפיקוד האישי", placeholder: "הקלידו תיוג" },
     ],
     buildOutput(values) {
       return [
@@ -21,6 +24,7 @@ const formatDefinitions = [
         `סיבה: ${values.reason}`,
         `כמות ירידה מתפקיד: ${values.amount}`,
         `כמות המדא שיש: ${values.mdaAmount}`,
+        `תיוג הפיקוד האישי: ${values.commandTag}`,
       ].join("\n");
     },
   },
@@ -29,12 +33,12 @@ const formatDefinitions = [
     tabTitle: "הפקרת ניידות",
     tabCopy: "טופס מהיר לדיווח מסודר על הפקרת ניידות.",
     title: "פורמט הפקרת ניידות",
-    defaultNameFieldId: "name",
     fields: [
       { id: "name", label: "שם", placeholder: "הקלידו שם" },
       { id: "reason", label: "סיבה", placeholder: "מהי הסיבה?" },
       { id: "location", label: "מיקום", placeholder: "ציינו מיקום" },
       { id: "image", label: "תמונה של הניידת", placeholder: "הדביקו קישור או תיאור" },
+      { id: "commandTag", label: "תיוג הפיקוד האישי", placeholder: "הקלידו תיוג" },
     ],
     buildOutput(values) {
       return [
@@ -43,6 +47,7 @@ const formatDefinitions = [
         `סיבה: ${values.reason}`,
         `מיקום: ${values.location}`,
         `תמונה של הניידת: ${values.image}`,
+        `תיוג הפיקוד האישי: ${values.commandTag}`,
       ].join("\n");
     },
   },
@@ -51,12 +56,11 @@ const formatDefinitions = [
     tabTitle: "קניית אוכל",
     tabCopy: "יצירת הודעה נקייה ומוכנה לשליחה על רכישת אוכל.",
     title: "קניית אוכל",
-    defaultNameFieldId: "mdaName",
     fields: [
       { id: "mdaName", label: "שם המדא", placeholder: "הקלידו את שם המדא" },
       { id: "quantity", label: "כמות", placeholder: "הקלידו כמות" },
       { id: "restaurant", label: "מאיזו מסעדה קניתם", placeholder: "הקלידו שם מסעדה" },
-      { id: "tag", label: "תיוג הפיקוד האישי", placeholder: "הקלידו תיוג" },
+      { id: "commandTag", label: "תיוג הפיקוד האישי", placeholder: "הקלידו תיוג" },
     ],
     buildOutput(values) {
       return [
@@ -64,8 +68,43 @@ const formatDefinitions = [
         `שם המדא: ${values.mdaName}`,
         `כמות: ${values.quantity}`,
         `מאיזו מסעדה קניתם: ${values.restaurant}`,
-        `תיוג הפיקוד האישי: ${values.tag}`,
+        `תיוג הפיקוד האישי: ${values.commandTag}`,
       ].join("\n");
+    },
+  },
+];
+
+const persistentSettingDefinitions = [
+  {
+    id: "fixedName",
+    storageKey: STORAGE_KEYS.fixedName,
+    inputId: "fixed-name-input",
+    saveButtonId: "fixed-name-save",
+    clearButtonId: "fixed-name-clear",
+    feedbackId: "fixed-name-feedback",
+    emptyMessage: "יש להזין שם לפני שמירה.",
+    saveMessage: "השם הקבוע נשמר",
+    clearMessage: "השם הקבוע נמחק",
+    targets: {
+      "role-exit": "name",
+      "vehicle-abandonment": "name",
+      "food-purchase": "mdaName",
+    },
+  },
+  {
+    id: "fixedCommandTag",
+    storageKey: STORAGE_KEYS.fixedCommandTag,
+    inputId: "fixed-command-tag-input",
+    saveButtonId: "fixed-command-tag-save",
+    clearButtonId: "fixed-command-tag-clear",
+    feedbackId: "fixed-command-tag-feedback",
+    emptyMessage: "יש להזין תיוג לפני שמירה.",
+    saveMessage: "התיוג הקבוע נשמר",
+    clearMessage: "התיוג הקבוע נמחק",
+    targets: {
+      "role-exit": "commandTag",
+      "vehicle-abandonment": "commandTag",
+      "food-purchase": "commandTag",
     },
   },
 ];
@@ -81,105 +120,61 @@ const defaultState = {
   }, {}),
 };
 
-const defaultNameManager = {
-  save(value) {
-    const normalizedValue = normalizeValue(value);
-    if (normalizedValue) {
-      localStorage.setItem(DEFAULT_NAME_KEY, normalizedValue);
-    } else {
-      localStorage.removeItem(DEFAULT_NAME_KEY);
-    }
-
-    return normalizedValue;
-  },
-
-  load() {
-    return normalizeValue(localStorage.getItem(DEFAULT_NAME_KEY) || "");
-  },
-
-  apply(value, { syncDom = false, restorePersisted = false } = {}) {
-    const normalizedValue = normalizeValue(value);
-    const persistedState = restorePersisted ? loadState() : null;
-
-    for (const format of formatDefinitions) {
-      if (!format.defaultNameFieldId) {
-        continue;
-      }
-
-      const fieldId = format.defaultNameFieldId;
-      const restoredValue = persistedState?.values?.[format.id]?.[fieldId] || "";
-      const nextValue = normalizedValue || restoredValue;
-      state.values[format.id][fieldId] = nextValue;
-
-      if (!syncDom) {
-        continue;
-      }
-
-      const panel = formsRoot.querySelector(`[data-format-panel="${format.id}"]`);
-      const input = panel?.querySelector(`#${format.id}-${fieldId}`);
-      const outputElement = panel?.querySelector(`[data-output="${format.id}"]`);
-
-      if (input) {
-        input.value = nextValue;
-      }
-
-      if (panel) {
-        setFieldError(panel, fieldId, "");
-      }
-
-      if (outputElement) {
-        refreshOutput(format, outputElement);
-      }
-    }
-
-    saveState();
-  },
-};
+const formatMap = Object.fromEntries(formatDefinitions.map((format) => [format.id, format]));
+const persistentSettingElements = {};
 
 const tabList = document.getElementById("tab-list");
 const formsRoot = document.getElementById("forms-root");
-const defaultNameInput = document.getElementById("default-name-input");
-const defaultNameSaveButton = document.getElementById("default-name-save");
-const defaultNameClearButton = document.getElementById("default-name-clear");
-const defaultNameFeedback = document.getElementById("default-name-feedback");
 
 let state = loadState();
-let defaultName = defaultNameManager.load();
-defaultNameManager.apply(defaultName);
+let persistentValues = loadPersistentValues();
+applyPersistentSettings();
+
+for (const setting of persistentSettingDefinitions) {
+  persistentSettingElements[setting.id] = {
+    input: document.getElementById(setting.inputId),
+    saveButton: document.getElementById(setting.saveButtonId),
+    clearButton: document.getElementById(setting.clearButtonId),
+    feedback: document.getElementById(setting.feedbackId),
+  };
+}
 
 renderTabs();
 renderPanels();
-bindDefaultNameControls();
+bindPersistentSettingControls();
 syncActiveView();
 
-function bindDefaultNameControls() {
-  defaultNameInput.value = defaultName;
+function bindPersistentSettingControls() {
+  for (const setting of persistentSettingDefinitions) {
+    const elements = persistentSettingElements[setting.id];
+    elements.input.value = persistentValues[setting.id];
 
-  defaultNameSaveButton.addEventListener("click", () => {
-    const nextDefaultName = normalizeValue(defaultNameInput.value);
-    if (!nextDefaultName) {
-      showTimedMessage(defaultNameFeedback, "יש להזין שם לפני שמירה.");
-      defaultNameInput.focus();
-      return;
-    }
+    elements.saveButton.addEventListener("click", () => {
+      const nextValue = normalizeValue(elements.input.value);
+      if (!nextValue) {
+        showTimedMessage(elements.feedback, setting.emptyMessage);
+        elements.input.focus();
+        return;
+      }
 
-    defaultName = defaultNameManager.save(nextDefaultName);
-    defaultNameInput.value = defaultName;
-    defaultNameManager.apply(defaultName, { syncDom: true });
-    showTimedMessage(defaultNameFeedback, "השם הקבוע נשמר");
-  });
+      persistentValues[setting.id] = savePersistentValue(setting, nextValue);
+      elements.input.value = persistentValues[setting.id];
+      applyPersistentSettings({ syncDom: true, settingIds: [setting.id] });
+      showTimedMessage(elements.feedback, setting.saveMessage);
+    });
 
-  defaultNameClearButton.addEventListener("click", () => {
-    defaultName = defaultNameManager.save("");
-    defaultNameInput.value = "";
-    defaultNameManager.apply(defaultName, { syncDom: true, restorePersisted: true });
-    showTimedMessage(defaultNameFeedback, "השם הקבוע נמחק");
-  });
+    elements.clearButton.addEventListener("click", () => {
+      persistentValues[setting.id] = savePersistentValue(setting, "");
+      elements.input.value = "";
+      applyPersistentSettings({ syncDom: true, restorePersisted: true, settingIds: [setting.id] });
+      showTimedMessage(elements.feedback, setting.clearMessage);
+    });
+  }
 }
 
 function loadState() {
   try {
-    const savedState = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+    const savedState = JSON.parse(localStorage.getItem(STORAGE_KEYS.formState) || "null");
     if (!savedState) {
       return cloneDefaultState();
     }
@@ -209,7 +204,60 @@ function cloneDefaultState() {
 }
 
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  localStorage.setItem(STORAGE_KEYS.formState, JSON.stringify(state));
+}
+
+function loadPersistentValues() {
+  return Object.fromEntries(
+    persistentSettingDefinitions.map((setting) => [
+      setting.id,
+      normalizeValue(localStorage.getItem(setting.storageKey) || ""),
+    ]),
+  );
+}
+
+function savePersistentValue(setting, value) {
+  const normalizedValue = normalizeValue(value);
+  if (normalizedValue) {
+    localStorage.setItem(setting.storageKey, normalizedValue);
+  } else {
+    localStorage.removeItem(setting.storageKey);
+  }
+
+  return normalizedValue;
+}
+
+function applyPersistentSettings({ syncDom = false, restorePersisted = false, settingIds = null, formatIds = null } = {}) {
+  const filteredSettings = settingIds
+    ? persistentSettingDefinitions.filter((setting) => settingIds.includes(setting.id))
+    : persistentSettingDefinitions;
+  const persistedState = restorePersisted ? loadState() : null;
+  const touchedFormatIds = new Set();
+
+  for (const setting of filteredSettings) {
+    for (const [formatId, fieldId] of Object.entries(setting.targets)) {
+      if (formatIds && !formatIds.includes(formatId)) {
+        continue;
+      }
+
+      const restoredValue = normalizeValue(persistedState?.values?.[formatId]?.[fieldId] || "");
+      const nextValue = persistentValues[setting.id] || restoredValue;
+      state.values[formatId][fieldId] = nextValue;
+      touchedFormatIds.add(formatId);
+
+      if (syncDom) {
+        syncFieldValue(formatId, fieldId, nextValue);
+      }
+    }
+  }
+
+  if (syncDom) {
+    for (const formatId of touchedFormatIds) {
+      refreshFormatOutput(formatId);
+    }
+  }
+
+  saveState();
 }
 
 function renderTabs() {
@@ -346,11 +394,11 @@ function renderPanels() {
 
     panel
       .querySelector(`[data-clear-button="${format.id}"]`)
-      .addEventListener("click", () => clearFormatFields(format, panel, outputElement));
+      .addEventListener("click", () => clearFormatFields(format, panel));
 
     panel
       .querySelector(`[data-reset-button="${format.id}"]`)
-      .addEventListener("click", () => handleReset(format, panel, outputElement, copyStateElement));
+      .addEventListener("click", () => handleReset(format, panel, copyStateElement));
 
     refreshOutput(format, outputElement);
   }
@@ -378,6 +426,15 @@ function updateFieldValue(formatId, fieldId, value) {
 
 function refreshOutput(format, outputElement) {
   outputElement.textContent = format.buildOutput(getNormalizedValues(format.id));
+}
+
+function refreshFormatOutput(formatId) {
+  const format = formatMap[formatId];
+  const panel = formsRoot.querySelector(`[data-format-panel="${formatId}"]`);
+  const outputElement = panel?.querySelector(`[data-output="${formatId}"]`);
+  if (format && outputElement) {
+    refreshOutput(format, outputElement);
+  }
 }
 
 function getNormalizedValues(formatId) {
@@ -420,12 +477,12 @@ async function handleCopy(format, panel, outputElement, copyStateElement) {
   }
 }
 
-function handleReset(format, panel, outputElement, messageElement) {
-  clearFormatFields(format, panel, outputElement);
+function handleReset(format, panel, messageElement) {
+  clearFormatFields(format, panel);
   showTimedMessage(messageElement, "הפורמט אופס");
 }
 
-function clearFormatFields(format, panel, outputElement) {
+function clearFormatFields(format, panel) {
   const form = panel.querySelector(`[data-format-form="${format.id}"]`);
 
   for (const field of format.fields) {
@@ -435,15 +492,20 @@ function clearFormatFields(format, panel, outputElement) {
     setFieldError(panel, field.id, "");
   }
 
-  if (defaultName && format.defaultNameFieldId) {
-    const defaultFieldId = format.defaultNameFieldId;
-    updateFieldValue(format.id, defaultFieldId, defaultName);
-    const defaultInput = form.elements.namedItem(defaultFieldId);
-    defaultInput.value = defaultName;
-    setFieldError(panel, defaultFieldId, "");
+  applyPersistentSettings({ syncDom: true, formatIds: [format.id] });
+  refreshFormatOutput(format.id);
+}
+
+function syncFieldValue(formatId, fieldId, value) {
+  const panel = formsRoot.querySelector(`[data-format-panel="${formatId}"]`);
+  const input = panel?.querySelector(`#${formatId}-${fieldId}`);
+  if (input) {
+    input.value = value;
   }
 
-  refreshOutput(format, outputElement);
+  if (panel) {
+    setFieldError(panel, fieldId, "");
+  }
 }
 
 function showTimedMessage(element, message) {

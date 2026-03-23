@@ -11,7 +11,8 @@ A fully static Hebrew RTL website for generating copy-ready text formats for MDA
 - Live output updates while typing
 - Copy and quick-copy actions
 - Local storage persistence
-- Persistent default-name autofill for relevant name fields
+- Persistent fixed-name autofill for relevant name fields
+- Persistent fixed command-tag autofill for all personal command-tag fields
 - Per-format reset action that preserves permanent saved settings
 - Required-field validation
 - Mobile-friendly polished interface
@@ -40,8 +41,8 @@ A fully static Hebrew RTL website for generating copy-ready text formats for MDA
 
 1. Clone the repository.
 2. Open `index.html` directly in a browser, or serve the folder with any static file server.
-3. Use the `שם קבוע` control to save one reusable default name in browser local storage.
-4. Use the `איפוס` button inside a format to clear only that format while keeping permanent saved settings such as the fixed default name.
+3. Use the fixed settings controls to save a reusable name and a reusable Discord command tag in browser local storage.
+4. Use the `איפוס` button inside a format to clear only that format while keeping permanent saved settings such as the fixed name and fixed command tag.
 
 ## Deployment
 
