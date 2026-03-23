@@ -1,0 +1,49 @@
+﻿<!DOCTYPE html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>פורמטים</title>
+    <meta
+      name="description"
+      content="אתר פורמטים בעברית ליצירת טקסטים מוכנים להעתקה עבור טפסים הקשורים ל-MDA."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+  </head>
+  <body>
+    <div class="background-glow background-glow-primary"></div>
+    <div class="background-glow background-glow-secondary"></div>
+    <div class="background-mesh"></div>
+
+    <main class="page-shell">
+      <header class="hero">
+        <div class="hero-badge">יוצר פורמטים מהיר</div>
+        <h1 class="hero-title">פורמטים</h1>
+        <p class="hero-subtitle">
+          מלאו את השדות וקבלו טקסט מוכן להעתקה באופן מיידי.
+        </p>
+      </header>
+
+      <section class="format-picker" aria-label="בחירת פורמט">
+        <div class="picker-header">
+          <h2 class="section-title">בחרו פורמט</h2>
+          <p class="section-copy">מעבר מהיר בין הפורמטים, עם שמירה אוטומטית של הנתונים.</p>
+        </div>
+        <div class="tab-list" id="tab-list" role="tablist" aria-label="פורמטים"></div>
+      </section>
+
+      <section id="forms-root" class="forms-root" aria-live="polite"></section>
+    </main>
+
+    <footer class="site-footer">mada-format-generator</footer>
+
+    <script src="assets/js/app.js"></script>
+  </body>
+</html>
