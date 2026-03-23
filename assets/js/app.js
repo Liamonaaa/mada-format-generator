@@ -1,4 +1,5 @@
 ﻿const STORAGE_KEY = "mada-format-generator-state";
+const DEFAULT_NAME_KEY = "mada-format-generator-default-name";
 
 const formatDefinitions = [
   {
@@ -6,6 +7,7 @@ const formatDefinitions = [
     tabTitle: "ירידה מתפקיד",
     tabCopy: "ליצירת פורמט מסודר על ירידה מתפקיד.",
     title: "פורמט ירידה מתפקיד",
+    defaultNameFieldId: "name",
     fields: [
       { id: "name", label: "שם", placeholder: "הקלידו שם" },
       { id: "reason", label: "סיבה", placeholder: "מהי הסיבה?" },
@@ -27,6 +29,7 @@ const formatDefinitions = [
     tabTitle: "הפקרת ניידות",
     tabCopy: "טופס מהיר לדיווח מסודר על הפקרת ניידות.",
     title: "פורמט הפקרת ניידות",
+    defaultNameFieldId: "name",
     fields: [
       { id: "name", label: "שם", placeholder: "הקלידו שם" },
       { id: "reason", label: "סיבה", placeholder: "מהי הסיבה?" },
@@ -48,6 +51,7 @@ const formatDefinitions = [
     tabTitle: "קניית אוכל",
     tabCopy: "יצירת הודעה נקייה ומוכנה לשליחה על רכישת אוכל.",
     title: "קניית אוכל",
+    defaultNameFieldId: "mdaName",
     fields: [
       { id: "mdaName", label: "שם המדא", placeholder: "הקלידו את שם המדא" },
       { id: "quantity", label: "כמות", placeholder: "הקלידו כמות" },
@@ -77,14 +81,99 @@ const defaultState = {
   }, {}),
 };
 
-let state = loadState();
+const defaultNameManager = {
+  save(value) {
+    const normalizedValue = normalizeValue(value);
+    if (normalizedValue) {
+      localStorage.setItem(DEFAULT_NAME_KEY, normalizedValue);
+    } else {
+      localStorage.removeItem(DEFAULT_NAME_KEY);
+    }
+
+    return normalizedValue;
+  },
+
+  load() {
+    return normalizeValue(localStorage.getItem(DEFAULT_NAME_KEY) || "");
+  },
+
+  apply(value, { syncDom = false, restorePersisted = false } = {}) {
+    const normalizedValue = normalizeValue(value);
+    const persistedState = restorePersisted ? loadState() : null;
+
+    for (const format of formatDefinitions) {
+      if (!format.defaultNameFieldId) {
+        continue;
+      }
+
+      const fieldId = format.defaultNameFieldId;
+      const restoredValue = persistedState?.values?.[format.id]?.[fieldId] || "";
+      const nextValue = normalizedValue || restoredValue;
+      state.values[format.id][fieldId] = nextValue;
+
+      if (!syncDom) {
+        continue;
+      }
+
+      const panel = formsRoot.querySelector(`[data-format-panel="${format.id}"]`);
+      const input = panel?.querySelector(`#${format.id}-${fieldId}`);
+      const outputElement = panel?.querySelector(`[data-output="${format.id}"]`);
+
+      if (input) {
+        input.value = nextValue;
+      }
+
+      if (panel) {
+        setFieldError(panel, fieldId, "");
+      }
+
+      if (outputElement) {
+        refreshOutput(format, outputElement);
+      }
+    }
+  },
+};
 
 const tabList = document.getElementById("tab-list");
 const formsRoot = document.getElementById("forms-root");
+const defaultNameInput = document.getElementById("default-name-input");
+const defaultNameSaveButton = document.getElementById("default-name-save");
+const defaultNameClearButton = document.getElementById("default-name-clear");
+const defaultNameFeedback = document.getElementById("default-name-feedback");
+
+let state = loadState();
+let defaultName = defaultNameManager.load();
+defaultNameManager.apply(defaultName);
 
 renderTabs();
 renderPanels();
+bindDefaultNameControls();
 syncActiveView();
+
+function bindDefaultNameControls() {
+  defaultNameInput.value = defaultName;
+
+  defaultNameSaveButton.addEventListener("click", () => {
+    const nextDefaultName = normalizeValue(defaultNameInput.value);
+    if (!nextDefaultName) {
+      showTimedMessage(defaultNameFeedback, "יש להזין שם לפני שמירה.");
+      defaultNameInput.focus();
+      return;
+    }
+
+    defaultName = defaultNameManager.save(nextDefaultName);
+    defaultNameInput.value = defaultName;
+    defaultNameManager.apply(defaultName, { syncDom: true });
+    showTimedMessage(defaultNameFeedback, "השם הקבוע נשמר");
+  });
+
+  defaultNameClearButton.addEventListener("click", () => {
+    defaultName = defaultNameManager.save("");
+    defaultNameInput.value = "";
+    defaultNameManager.apply(defaultName, { syncDom: true, restorePersisted: true });
+    showTimedMessage(defaultNameFeedback, "השם הקבוע נמחק");
+  });
+}
 
 function loadState() {
   try {
@@ -260,8 +349,13 @@ function renderPanels() {
           setFieldError(panel, field.id, "");
         }
 
-        refreshOutput(format, outputElement);
-        showCopyState(copyStateElement, "");
+        if (defaultName) {
+          defaultNameManager.apply(defaultName, { syncDom: true });
+        } else {
+          refreshOutput(format, outputElement);
+        }
+
+        showTimedMessage(copyStateElement, "");
       });
 
     refreshOutput(format, outputElement);
@@ -320,19 +414,19 @@ function validateForm(format, panel) {
 
 async function handleCopy(format, panel, outputElement, copyStateElement) {
   if (!validateForm(format, panel)) {
-    showCopyState(copyStateElement, "יש למלא את כל השדות לפני ההעתקה.");
+    showTimedMessage(copyStateElement, "יש למלא את כל השדות לפני ההעתקה.");
     return;
   }
 
   try {
     await navigator.clipboard.writeText(outputElement.textContent);
-    showCopyState(copyStateElement, "הטקסט הועתק");
+    showTimedMessage(copyStateElement, "הטקסט הועתק");
   } catch (error) {
-    showCopyState(copyStateElement, "לא ניתן היה להעתיק. נסו שוב.");
+    showTimedMessage(copyStateElement, "לא ניתן היה להעתיק. נסו שוב.");
   }
 }
 
-function showCopyState(element, message) {
+function showTimedMessage(element, message) {
   element.textContent = message;
   if (element._timeoutId) {
     window.clearTimeout(element._timeoutId);
@@ -351,6 +445,10 @@ function setFieldError(panel, fieldId, message) {
   const fieldError = panel.querySelector(`[data-field-error="${fieldId}"]`);
   fieldGroup.classList.toggle("has-error", Boolean(message));
   fieldError.textContent = message;
+}
+
+function normalizeValue(value) {
+  return String(value || "").trim();
 }
 
 function escapeHtml(value) {

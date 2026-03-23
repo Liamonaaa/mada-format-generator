@@ -31,6 +31,37 @@
         </p>
       </header>
 
+      <section class="format-picker default-name-panel" aria-label="שם קבוע">
+        <div class="picker-header default-name-header">
+          <div>
+            <h2 class="section-title">שם קבוע</h2>
+            <p class="section-copy">שמרו שם אחד למילוי אוטומטי בכל הפורמטים הרלוונטיים.</p>
+          </div>
+        </div>
+
+        <div class="default-name-controls">
+          <div class="field-group default-name-field">
+            <label class="field-label" for="default-name-input">שם קבוע</label>
+            <input
+              class="field-input default-name-input"
+              id="default-name-input"
+              type="text"
+              autocomplete="off"
+              placeholder="הקלידו שם קבוע"
+            />
+          </div>
+
+          <div class="default-name-actions">
+            <button class="action-button primary" id="default-name-save" type="button">שמור</button>
+            <button class="action-button secondary" id="default-name-clear" type="button">
+              נקה שם קבוע
+            </button>
+          </div>
+        </div>
+
+        <div class="settings-state" id="default-name-feedback" aria-live="polite"></div>
+      </section>
+
       <section class="format-picker" aria-label="בחירת פורמט">
         <div class="picker-header">
           <h2 class="section-title">בחרו פורמט</h2>
