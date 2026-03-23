@@ -12,6 +12,7 @@ A fully static Hebrew RTL website for generating copy-ready text formats for MDA
 - Copy and quick-copy actions
 - Local storage persistence
 - Persistent default-name autofill for relevant name fields
+- Per-format reset action that preserves permanent saved settings
 - Required-field validation
 - Mobile-friendly polished interface
 - GitHub Actions workflow for GitHub Pages deployment
@@ -40,6 +41,7 @@ A fully static Hebrew RTL website for generating copy-ready text formats for MDA
 1. Clone the repository.
 2. Open `index.html` directly in a browser, or serve the folder with any static file server.
 3. Use the `שם קבוע` control to save one reusable default name in browser local storage.
+4. Use the `איפוס` button inside a format to clear only that format while keeping permanent saved settings such as the fixed default name.
 
 ## Deployment
 

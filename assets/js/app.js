@@ -131,6 +131,8 @@ const defaultNameManager = {
         refreshOutput(format, outputElement);
       }
     }
+
+    saveState();
   },
 };
 
@@ -306,6 +308,9 @@ function renderPanels() {
             <div class="copy-state" data-copy-state="${format.id}" aria-live="polite"></div>
             <pre class="output-box" data-output="${format.id}"></pre>
             <p class="output-tip">טיפ: ניתן להעתיק גם מהכפתור הקטן בצד העליון.</p>
+            <button class="action-button secondary reset-button" type="button" data-reset-button="${format.id}">
+              איפוס
+            </button>
           </div>
         </section>
       `,
@@ -341,22 +346,11 @@ function renderPanels() {
 
     panel
       .querySelector(`[data-clear-button="${format.id}"]`)
-      .addEventListener("click", () => {
-        for (const field of format.fields) {
-          updateFieldValue(format.id, field.id, "");
-          const input = form.elements.namedItem(field.id);
-          input.value = "";
-          setFieldError(panel, field.id, "");
-        }
+      .addEventListener("click", () => clearFormatFields(format, panel, outputElement));
 
-        if (defaultName) {
-          defaultNameManager.apply(defaultName, { syncDom: true });
-        } else {
-          refreshOutput(format, outputElement);
-        }
-
-        showTimedMessage(copyStateElement, "");
-      });
+    panel
+      .querySelector(`[data-reset-button="${format.id}"]`)
+      .addEventListener("click", () => handleReset(format, panel, outputElement, copyStateElement));
 
     refreshOutput(format, outputElement);
   }
@@ -424,6 +418,32 @@ async function handleCopy(format, panel, outputElement, copyStateElement) {
   } catch (error) {
     showTimedMessage(copyStateElement, "לא ניתן היה להעתיק. נסו שוב.");
   }
+}
+
+function handleReset(format, panel, outputElement, messageElement) {
+  clearFormatFields(format, panel, outputElement);
+  showTimedMessage(messageElement, "הפורמט אופס");
+}
+
+function clearFormatFields(format, panel, outputElement) {
+  const form = panel.querySelector(`[data-format-form="${format.id}"]`);
+
+  for (const field of format.fields) {
+    updateFieldValue(format.id, field.id, "");
+    const input = form.elements.namedItem(field.id);
+    input.value = "";
+    setFieldError(panel, field.id, "");
+  }
+
+  if (defaultName && format.defaultNameFieldId) {
+    const defaultFieldId = format.defaultNameFieldId;
+    updateFieldValue(format.id, defaultFieldId, defaultName);
+    const defaultInput = form.elements.namedItem(defaultFieldId);
+    defaultInput.value = defaultName;
+    setFieldError(panel, defaultFieldId, "");
+  }
+
+  refreshOutput(format, outputElement);
 }
 
 function showTimedMessage(element, message) {
