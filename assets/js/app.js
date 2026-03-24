@@ -3,6 +3,7 @@ const STORAGE_KEYS = {
   fixedName: "mada-format-generator-fixed-name",
   fixedCommandTag: "mada-format-generator-fixed-command-tag",
   imageState: "mada-format-generator-image-state",
+  imageLinkState: "mada-format-generator-image-link-state",
 };
 
 const IMAGE_FIELD_TYPE = "image";
@@ -13,8 +14,9 @@ const IMAGE_UPLOAD_SUBTEXT = "אפשר גם לגרור תמונה לכאן";
 const IMAGE_PREVIEW_ALT = "תצוגה מקדימה של תמונת הניידת";
 const IMAGE_PERSIST_WARNING = "התמונה צורפה זמנית בלבד ולא נשמרה בדפדפן.";
 const IMAGE_LOAD_ERROR = "לא ניתן היה לטעון את התמונה. נסו קובץ אחר.";
-const DISCORD_COPY_SUCCESS_MESSAGE = "הטקסט והתמונה הועתקו להדבקה בדיסקורד";
-const DISCORD_COPY_FALLBACK_MESSAGE = "הדפדפן לא תומך בהעתקת תמונה. הועתק רק הטקסט.";
+const IMAGE_LINK_COPY_SUCCESS_MESSAGE = "נוצר קישור ציבורי לתמונה והפורמט הועתק";
+const IMAGE_LINK_COPY_ERROR_MESSAGE = "לא ניתן היה ליצור קישור ציבורי לתמונה. נסו שוב.";
+const PUBLIC_IMAGE_UPLOAD_URL = "https://catbox.moe/user/api.php";
 const MAX_PERSISTED_IMAGE_LENGTH = 900000;
 const MAX_IMAGE_DIMENSION = 1280;
 const IMAGE_COMPRESSION_QUALITY = 0.82;
@@ -152,6 +154,16 @@ const defaultImageState = formatDefinitions.reduce((formatsMap, format) => {
   return formatsMap;
 }, {});
 
+const defaultImageLinkState = formatDefinitions.reduce((formatsMap, format) => {
+  formatsMap[format.id] = format.fields
+    .filter(isImageField)
+    .reduce((fieldMap, field) => {
+      fieldMap[field.id] = "";
+      return fieldMap;
+    }, {});
+  return formatsMap;
+}, {});
+
 const formatMap = Object.fromEntries(formatDefinitions.map((format) => [format.id, format]));
 const persistentSettingElements = {};
 
@@ -160,6 +172,7 @@ const formsRoot = document.getElementById("forms-root");
 
 let state = loadState();
 let imageState = loadImageState();
+let imageLinkState = loadImageLinkState();
 let persistentValues = loadPersistentValues();
 
 applyPersistentSettings();
@@ -267,12 +280,38 @@ function loadImageState() {
   }
 }
 
+function loadImageLinkState() {
+  try {
+    const savedState = JSON.parse(localStorage.getItem(STORAGE_KEYS.imageLinkState) || "null");
+    if (!savedState || typeof savedState !== "object") {
+      return cloneDefaultImageLinkState();
+    }
+
+    const normalizedState = cloneDefaultImageLinkState();
+    for (const format of formatDefinitions) {
+      for (const field of format.fields.filter(isImageField)) {
+        const savedValue = savedState?.[format.id]?.[field.id];
+        normalizedState[format.id][field.id] = isPublicImageUrl(savedValue) ? savedValue : "";
+      }
+    }
+
+    return normalizedState;
+  } catch (error) {
+    clearImageLinkStorage();
+    return cloneDefaultImageLinkState();
+  }
+}
+
 function cloneDefaultState() {
   return JSON.parse(JSON.stringify(defaultState));
 }
 
 function cloneDefaultImageState() {
   return JSON.parse(JSON.stringify(defaultImageState));
+}
+
+function cloneDefaultImageLinkState() {
+  return JSON.parse(JSON.stringify(defaultImageLinkState));
 }
 
 function saveState() {
@@ -316,6 +355,37 @@ function syncImageStorage() {
 function clearImageStorage() {
   try {
     localStorage.removeItem(STORAGE_KEYS.imageState);
+  } catch (error) {
+    return;
+  }
+}
+
+function syncImageLinkStorage() {
+  const serializableState = cloneDefaultImageLinkState();
+  let hasLinks = false;
+
+  for (const format of formatDefinitions) {
+    for (const field of format.fields.filter(isImageField)) {
+      const publicUrl = getPublicImageUrl(format.id, field.id);
+      if (!isPublicImageUrl(publicUrl)) {
+        continue;
+      }
+
+      serializableState[format.id][field.id] = publicUrl;
+      hasLinks = true;
+    }
+  }
+
+  if (hasLinks) {
+    localStorage.setItem(STORAGE_KEYS.imageLinkState, JSON.stringify(serializableState));
+  } else {
+    localStorage.removeItem(STORAGE_KEYS.imageLinkState);
+  }
+}
+
+function clearImageLinkStorage() {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.imageLinkState);
   } catch (error) {
     return;
   }
@@ -610,7 +680,7 @@ function renderDiscordCopyButtonMarkup(format) {
 
   return `
     <button class="action-button secondary" type="button" data-discord-copy-button="${format.id}">
-      העתק לדיסקורד
+      העתק עם קישור
     </button>
   `;
 }
@@ -748,7 +818,7 @@ function updateFieldValue(formatId, fieldId, value) {
 }
 
 function refreshOutput(format, outputElement) {
-  outputElement.textContent = format.buildOutput(getNormalizedValues(format.id));
+  outputElement.textContent = buildOutputText(format.id);
 }
 
 function refreshFormatOutput(formatId) {
@@ -761,20 +831,34 @@ function refreshFormatOutput(formatId) {
 }
 
 function getNormalizedValues(formatId) {
+  return getNormalizedValuesForOutput(formatId);
+}
+
+function getNormalizedValuesForOutput(formatId, { preferPublicImageUrl = true } = {}) {
   const currentValues = state.values[formatId];
   const format = formatMap[formatId];
   const normalizedValues = {};
 
   for (const field of format.fields) {
     normalizedValues[field.id] = isImageField(field)
-      ? getImageOutputValue(formatId, field.id)
+      ? getImageOutputValue(formatId, field.id, { preferPublicImageUrl })
       : normalizeValue(currentValues[field.id]);
   }
 
   return normalizedValues;
 }
 
-function getImageOutputValue(formatId, fieldId) {
+function buildOutputText(formatId, options = {}) {
+  const format = formatMap[formatId];
+  return format.buildOutput(getNormalizedValuesForOutput(formatId, options));
+}
+
+function getImageOutputValue(formatId, fieldId, { preferPublicImageUrl = true } = {}) {
+  const publicUrl = getPublicImageUrl(formatId, fieldId);
+  if (preferPublicImageUrl && isPublicImageUrl(publicUrl)) {
+    return publicUrl;
+  }
+
   return hasImageAttachment(formatId, fieldId) ? IMAGE_ATTACHED_TEXT : "";
 }
 
@@ -832,13 +916,17 @@ async function handleDiscordCopy(format, panel, outputElement, copyStateElement)
   }
 
   try {
-    const copiedRichContent = await copyOutputForDiscord(format.id, outputElement.textContent);
-    showTimedMessage(
-      copyStateElement,
-      copiedRichContent ? DISCORD_COPY_SUCCESS_MESSAGE : DISCORD_COPY_FALLBACK_MESSAGE,
-    );
+    const publicUrl = await ensurePublicImageUrl(format.id, imageField.id);
+    if (!isPublicImageUrl(publicUrl)) {
+      throw new Error("PUBLIC_URL_MISSING");
+    }
+
+    const textWithPublicLink = buildOutputText(format.id, { preferPublicImageUrl: true });
+    await navigator.clipboard.writeText(textWithPublicLink);
+    outputElement.textContent = textWithPublicLink;
+    showTimedMessage(copyStateElement, IMAGE_LINK_COPY_SUCCESS_MESSAGE);
   } catch (error) {
-    showTimedMessage(copyStateElement, "לא ניתן היה להעתיק לדיסקורד. נסו שוב.");
+    showTimedMessage(copyStateElement, IMAGE_LINK_COPY_ERROR_MESSAGE);
   }
 }
 
@@ -921,6 +1009,10 @@ function getImageAttachment(formatId, fieldId) {
   return imageState?.[formatId]?.[fieldId] || "";
 }
 
+function getPublicImageUrl(formatId, fieldId) {
+  return imageLinkState?.[formatId]?.[fieldId] || "";
+}
+
 function hasImageAttachment(formatId, fieldId) {
   return Boolean(getImageAttachment(formatId, fieldId));
 }
@@ -931,6 +1023,7 @@ function setImageAttachment(formatId, fieldId, dataUrl) {
   }
 
   imageState[formatId][fieldId] = dataUrl;
+  clearPublicImageUrl(formatId, fieldId, { refreshOutput: false });
   const storageResult = syncImageStorage();
   syncImageFieldUi(formatId, fieldId);
   refreshFormatOutput(formatId);
@@ -943,9 +1036,32 @@ function clearImageAttachment(formatId, fieldId) {
   }
 
   imageState[formatId][fieldId] = "";
+  clearPublicImageUrl(formatId, fieldId, { refreshOutput: false });
   syncImageStorage();
   syncImageFieldUi(formatId, fieldId);
   refreshFormatOutput(formatId);
+}
+
+function setPublicImageUrl(formatId, fieldId, publicUrl) {
+  if (!imageLinkState[formatId]) {
+    imageLinkState[formatId] = {};
+  }
+
+  imageLinkState[formatId][fieldId] = publicUrl;
+  syncImageLinkStorage();
+  refreshFormatOutput(formatId);
+}
+
+function clearPublicImageUrl(formatId, fieldId, { refreshOutput = true } = {}) {
+  if (!imageLinkState[formatId]) {
+    imageLinkState[formatId] = {};
+  }
+
+  imageLinkState[formatId][fieldId] = "";
+  syncImageLinkStorage();
+  if (refreshOutput) {
+    refreshFormatOutput(formatId);
+  }
 }
 
 function syncImageFieldUi(formatId, fieldId) {
@@ -1027,31 +1143,42 @@ function getImageFileFromFileList(files) {
   return null;
 }
 
-async function copyOutputForDiscord(formatId, textContent) {
-  const imageFieldId = formatMap[formatId]?.fields.find(isImageField)?.id;
-  const imageDataUrl = imageFieldId ? getImageAttachment(formatId, imageFieldId) : "";
-  if (!imageDataUrl || !canWriteRichClipboard()) {
-    await navigator.clipboard.writeText(textContent);
-    return false;
+async function ensurePublicImageUrl(formatId, fieldId) {
+  const existingUrl = getPublicImageUrl(formatId, fieldId);
+  if (isPublicImageUrl(existingUrl)) {
+    return existingUrl;
+  }
+
+  const imageDataUrl = getImageAttachment(formatId, fieldId);
+  if (!imageDataUrl) {
+    return "";
   }
 
   const pngBlob = await dataUrlToPngBlob(imageDataUrl);
-  const clipboardItem = new ClipboardItem({
-    "text/plain": new Blob([textContent], { type: "text/plain" }),
-    "image/png": pngBlob,
+  const formData = new FormData();
+  formData.append("reqtype", "fileupload");
+  formData.append("fileToUpload", pngBlob, `mada-${Date.now()}.png`);
+
+  const response = await fetch(PUBLIC_IMAGE_UPLOAD_URL, {
+    method: "POST",
+    body: formData,
   });
 
-  await navigator.clipboard.write([clipboardItem]);
-  return true;
+  if (!response.ok) {
+    throw new Error("PUBLIC_UPLOAD_FAILED");
+  }
+
+  const responseText = normalizeValue(await response.text());
+  if (!isPublicImageUrl(responseText)) {
+    throw new Error("INVALID_PUBLIC_URL");
+  }
+
+  setPublicImageUrl(formatId, fieldId, responseText);
+  return responseText;
 }
 
-function canWriteRichClipboard() {
-  return Boolean(
-    window.isSecureContext &&
-      navigator.clipboard &&
-      typeof navigator.clipboard.write === "function" &&
-      typeof ClipboardItem !== "undefined",
-  );
+function isPublicImageUrl(value) {
+  return typeof value === "string" && /^https?:\/\/\S+$/i.test(value.trim());
 }
 
 async function buildImageDataUrl(file) {
