@@ -1,8 +1,21 @@
-﻿const STORAGE_KEYS = {
+const STORAGE_KEYS = {
   formState: "mada-format-generator-state",
   fixedName: "mada-format-generator-fixed-name",
   fixedCommandTag: "mada-format-generator-fixed-command-tag",
+  imageState: "mada-format-generator-image-state",
 };
+
+const IMAGE_FIELD_TYPE = "image";
+const IMAGE_ATTACHED_TEXT = "צורפה תמונה";
+const IMAGE_REQUIRED_MESSAGE = "יש לצרף תמונה.";
+const IMAGE_UPLOAD_HELPER_TEXT = "הדביקו תמונה או לחצו להעלאה";
+const IMAGE_UPLOAD_SUBTEXT = "אפשר גם לגרור תמונה לכאן";
+const IMAGE_PREVIEW_ALT = "תצוגה מקדימה של תמונת הניידת";
+const IMAGE_PERSIST_WARNING = "התמונה צורפה זמנית בלבד ולא נשמרה בדפדפן.";
+const IMAGE_LOAD_ERROR = "לא ניתן היה לטעון את התמונה. נסו קובץ אחר.";
+const MAX_PERSISTED_IMAGE_LENGTH = 900000;
+const MAX_IMAGE_DIMENSION = 1280;
+const IMAGE_COMPRESSION_QUALITY = 0.82;
 
 const formatDefinitions = [
   {
@@ -37,7 +50,14 @@ const formatDefinitions = [
       { id: "name", label: "שם", placeholder: "הקלידו שם" },
       { id: "reason", label: "סיבה", placeholder: "מהי הסיבה?" },
       { id: "location", label: "מיקום", placeholder: "ציינו מיקום" },
-      { id: "image", label: "תמונה של הניידת", placeholder: "הדביקו קישור או תיאור" },
+      {
+        id: "image",
+        type: IMAGE_FIELD_TYPE,
+        label: "תמונה של הניידת",
+        helperText: IMAGE_UPLOAD_HELPER_TEXT,
+        subText: IMAGE_UPLOAD_SUBTEXT,
+        removeLabel: "הסר תמונה",
+      },
       { id: "commandTag", label: "תיוג הפיקוד האישי", placeholder: "הקלידו תיוג" },
     ],
     buildOutput(values) {
@@ -111,14 +131,24 @@ const persistentSettingDefinitions = [
 
 const defaultState = {
   activeFormatId: formatDefinitions[0].id,
-  values: formatDefinitions.reduce((accumulator, format) => {
-    accumulator[format.id] = format.fields.reduce((fieldMap, field) => {
+  values: formatDefinitions.reduce((formatsMap, format) => {
+    formatsMap[format.id] = format.fields.reduce((fieldMap, field) => {
       fieldMap[field.id] = "";
       return fieldMap;
     }, {});
-    return accumulator;
+    return formatsMap;
   }, {}),
 };
+
+const defaultImageState = formatDefinitions.reduce((formatsMap, format) => {
+  formatsMap[format.id] = format.fields
+    .filter(isImageField)
+    .reduce((fieldMap, field) => {
+      fieldMap[field.id] = "";
+      return fieldMap;
+    }, {});
+  return formatsMap;
+}, {});
 
 const formatMap = Object.fromEntries(formatDefinitions.map((format) => [format.id, format]));
 const persistentSettingElements = {};
@@ -127,7 +157,9 @@ const tabList = document.getElementById("tab-list");
 const formsRoot = document.getElementById("forms-root");
 
 let state = loadState();
+let imageState = loadImageState();
 let persistentValues = loadPersistentValues();
+
 applyPersistentSettings();
 
 for (const setting of persistentSettingDefinitions) {
@@ -143,6 +175,10 @@ renderTabs();
 renderPanels();
 bindPersistentSettingControls();
 syncActiveView();
+
+function isImageField(field) {
+  return field.type === IMAGE_FIELD_TYPE;
+}
 
 function bindPersistentSettingControls() {
   for (const setting of persistentSettingDefinitions) {
@@ -189,6 +225,11 @@ function loadState() {
     for (const format of formatDefinitions) {
       const savedValues = savedState.values?.[format.id] || {};
       for (const field of format.fields) {
+        if (isImageField(field)) {
+          normalizedState.values[format.id][field.id] = "";
+          continue;
+        }
+
         normalizedState.values[format.id][field.id] = String(savedValues[field.id] || "");
       }
     }
@@ -199,12 +240,87 @@ function loadState() {
   }
 }
 
+function loadImageState() {
+  try {
+    const savedState = JSON.parse(localStorage.getItem(STORAGE_KEYS.imageState) || "null");
+    if (!savedState || typeof savedState !== "object") {
+      return cloneDefaultImageState();
+    }
+
+    const normalizedState = cloneDefaultImageState();
+    for (const format of formatDefinitions) {
+      for (const field of format.fields.filter(isImageField)) {
+        const savedValue = savedState?.[format.id]?.[field.id];
+        normalizedState[format.id][field.id] =
+          typeof savedValue === "string" && savedValue.startsWith("data:image/")
+            ? savedValue
+            : "";
+      }
+    }
+
+    return normalizedState;
+  } catch (error) {
+    clearImageStorage();
+    return cloneDefaultImageState();
+  }
+}
+
 function cloneDefaultState() {
   return JSON.parse(JSON.stringify(defaultState));
 }
 
+function cloneDefaultImageState() {
+  return JSON.parse(JSON.stringify(defaultImageState));
+}
+
 function saveState() {
   localStorage.setItem(STORAGE_KEYS.formState, JSON.stringify(state));
+}
+
+function syncImageStorage() {
+  const serializableState = cloneDefaultImageState();
+  let hasPersistableImage = false;
+  let skippedFields = 0;
+
+  for (const format of formatDefinitions) {
+    for (const field of format.fields.filter(isImageField)) {
+      const dataUrl = getImageAttachment(format.id, field.id);
+      if (!dataUrl) {
+        continue;
+      }
+
+      if (isPersistableImage(dataUrl)) {
+        serializableState[format.id][field.id] = dataUrl;
+        hasPersistableImage = true;
+      } else {
+        skippedFields += 1;
+      }
+    }
+  }
+
+  try {
+    if (hasPersistableImage) {
+      localStorage.setItem(STORAGE_KEYS.imageState, JSON.stringify(serializableState));
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.imageState);
+    }
+
+    return { ok: true, skippedFields };
+  } catch (error) {
+    return { ok: false, skippedFields };
+  }
+}
+
+function clearImageStorage() {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.imageState);
+  } catch (error) {
+    return;
+  }
+}
+
+function isPersistableImage(dataUrl) {
+  return typeof dataUrl === "string" && dataUrl.length > 0 && dataUrl.length <= MAX_PERSISTED_IMAGE_LENGTH;
 }
 
 function loadPersistentValues() {
@@ -227,7 +343,12 @@ function savePersistentValue(setting, value) {
   return normalizedValue;
 }
 
-function applyPersistentSettings({ syncDom = false, restorePersisted = false, settingIds = null, formatIds = null } = {}) {
+function applyPersistentSettings({
+  syncDom = false,
+  restorePersisted = false,
+  settingIds = null,
+  formatIds = null,
+} = {}) {
   const filteredSettings = settingIds
     ? persistentSettingDefinitions.filter((setting) => settingIds.includes(setting.id))
     : persistentSettingDefinitions;
@@ -304,26 +425,7 @@ function renderPanels() {
             <h2 class="panel-heading">${format.title}</h2>
             <p class="panel-subtitle">מלאו את כל השדות לקבלת טקסט מוכן להעתקה.</p>
             <form class="form-grid" data-format-form="${format.id}" novalidate>
-              ${format.fields
-                .map(
-                  (field) => `
-                    <div class="field-group" data-field-group="${field.id}">
-                      <label class="field-label" for="${format.id}-${field.id}">${field.label}</label>
-                      <input
-                        class="field-input"
-                        id="${format.id}-${field.id}"
-                        name="${field.id}"
-                        type="text"
-                        autocomplete="off"
-                        placeholder="${field.placeholder}"
-                        value="${escapeHtml(state.values[format.id][field.id])}"
-                        required
-                      />
-                      <div class="field-error" data-field-error="${field.id}"></div>
-                    </div>
-                  `,
-                )
-                .join("")}
+              ${format.fields.map((field) => renderFieldMarkup(format, field)).join("")}
               <div class="panel-actions">
                 <button class="action-button primary" type="button" data-copy-button="${format.id}">
                   העתק
@@ -354,6 +456,7 @@ function renderPanels() {
               </button>
             </div>
             <div class="copy-state" data-copy-state="${format.id}" aria-live="polite"></div>
+            ${renderOutputImageMarkup(format)}
             <pre class="output-box" data-output="${format.id}"></pre>
             <p class="output-tip">טיפ: ניתן להעתיק גם מהכפתור הקטן בצד העליון.</p>
             <button class="action-button secondary reset-button" type="button" data-reset-button="${format.id}">
@@ -366,12 +469,18 @@ function renderPanels() {
     .join("");
 
   for (const format of formatDefinitions) {
-    const panel = formsRoot.querySelector(`[data-format-panel="${format.id}"]`);
+    const panel = getPanel(format.id);
     const form = panel.querySelector(`[data-format-form="${format.id}"]`);
     const outputElement = panel.querySelector(`[data-output="${format.id}"]`);
     const copyStateElement = panel.querySelector(`[data-copy-state="${format.id}"]`);
 
     for (const field of format.fields) {
+      if (isImageField(field)) {
+        bindImageField(panel, format, field);
+        syncImageFieldUi(format.id, field.id);
+        continue;
+      }
+
       const input = form.elements.namedItem(field.id);
       input.addEventListener("input", () => {
         updateFieldValue(format.id, field.id, input.value);
@@ -380,7 +489,7 @@ function renderPanels() {
       });
 
       input.addEventListener("blur", () => {
-        validateField(panel, field, input.value);
+        validateField(panel, format, field, input.value);
       });
     }
 
@@ -402,6 +511,199 @@ function renderPanels() {
 
     refreshOutput(format, outputElement);
   }
+}
+
+function renderFieldMarkup(format, field) {
+  if (isImageField(field)) {
+    return renderImageFieldMarkup(format, field);
+  }
+
+  return `
+    <div class="field-group" data-field-group="${field.id}">
+      <label class="field-label" for="${format.id}-${field.id}">${field.label}</label>
+      <input
+        class="field-input"
+        id="${format.id}-${field.id}"
+        name="${field.id}"
+        type="text"
+        autocomplete="off"
+        placeholder="${field.placeholder}"
+        value="${escapeHtml(state.values[format.id][field.id])}"
+        required
+      />
+      <div class="field-error" data-field-error="${field.id}"></div>
+    </div>
+  `;
+}
+
+function renderImageFieldMarkup(format, field) {
+  return `
+    <div class="field-group image-field-group" data-field-group="${field.id}">
+      <label class="field-label" for="${format.id}-${field.id}-picker">${field.label}</label>
+      <div
+        class="image-upload"
+        data-image-upload="${field.id}"
+        tabindex="0"
+        role="button"
+        aria-describedby="${format.id}-${field.id}-helper"
+        aria-label="${field.helperText}"
+      >
+        <input
+          class="visually-hidden"
+          id="${format.id}-${field.id}-picker"
+          name="${field.id}"
+          type="file"
+          accept="image/*"
+          data-image-input="${field.id}"
+        />
+        <div class="image-upload-empty" data-image-empty="${field.id}">
+          <span class="image-upload-title">${field.helperText}</span>
+          <span class="image-upload-helper" id="${format.id}-${field.id}-helper">${field.subText}</span>
+        </div>
+        <div class="image-upload-preview" data-image-preview="${field.id}" hidden>
+          <img data-image-preview-img="${field.id}" alt="${IMAGE_PREVIEW_ALT}" />
+        </div>
+      </div>
+      <div class="image-field-actions">
+        <span class="image-status" data-image-status="${field.id}"></span>
+        <button
+          class="action-button secondary image-remove-button"
+          type="button"
+          data-image-remove="${field.id}"
+          hidden
+        >
+          ${field.removeLabel}
+        </button>
+      </div>
+      <div class="field-error" data-field-error="${field.id}"></div>
+    </div>
+  `;
+}
+
+function renderOutputImageMarkup(format) {
+  const imageField = format.fields.find(isImageField);
+  if (!imageField) {
+    return "";
+  }
+
+  return `
+    <div class="output-image-card" data-output-image-card="${imageField.id}" hidden>
+      <div class="output-image-label">${imageField.label}</div>
+      <img class="output-image-preview" data-output-image-preview="${imageField.id}" alt="${IMAGE_PREVIEW_ALT}" />
+    </div>
+  `;
+}
+
+function bindImageField(panel, format, field) {
+  const uploadArea = panel.querySelector(`[data-image-upload="${field.id}"]`);
+  const fileInput = panel.querySelector(`[data-image-input="${field.id}"]`);
+  const removeButton = panel.querySelector(`[data-image-remove="${field.id}"]`);
+  const copyStateElement = panel.querySelector(`[data-copy-state="${format.id}"]`);
+
+  const selectImage = async (file) => {
+    if (!file) {
+      return;
+    }
+
+    try {
+      const dataUrl = await buildImageDataUrl(file);
+      const storageResult = setImageAttachment(format.id, field.id, dataUrl);
+      setFieldError(panel, field.id, "");
+      if (!storageResult.ok || storageResult.skippedFields > 0) {
+        showTimedMessage(copyStateElement, IMAGE_PERSIST_WARNING);
+      }
+    } catch (error) {
+      setFieldError(panel, field.id, IMAGE_LOAD_ERROR);
+    } finally {
+      fileInput.value = "";
+    }
+  };
+
+  uploadArea.addEventListener("click", () => {
+    fileInput.click();
+  });
+
+  uploadArea.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    event.preventDefault();
+    fileInput.click();
+  });
+
+  uploadArea.addEventListener("paste", (event) => {
+    const file = getImageFileFromClipboard(event.clipboardData);
+    if (!file) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    selectImage(file);
+  });
+
+  panel.addEventListener("paste", (event) => {
+    if (state.activeFormatId !== format.id) {
+      return;
+    }
+
+    const file = getImageFileFromClipboard(event.clipboardData);
+    if (!file) {
+      return;
+    }
+
+    event.preventDefault();
+    selectImage(file);
+  });
+
+  uploadArea.addEventListener("dragenter", (event) => {
+    if (!getImageFileFromDataTransfer(event.dataTransfer)) {
+      return;
+    }
+
+    event.preventDefault();
+    uploadArea.classList.add("is-dragging");
+  });
+
+  uploadArea.addEventListener("dragover", (event) => {
+    if (!getImageFileFromDataTransfer(event.dataTransfer)) {
+      return;
+    }
+
+    event.preventDefault();
+    uploadArea.classList.add("is-dragging");
+  });
+
+  uploadArea.addEventListener("dragleave", (event) => {
+    if (event.currentTarget.contains(event.relatedTarget)) {
+      return;
+    }
+
+    uploadArea.classList.remove("is-dragging");
+  });
+
+  uploadArea.addEventListener("drop", (event) => {
+    const file = getImageFileFromDataTransfer(event.dataTransfer);
+    uploadArea.classList.remove("is-dragging");
+    if (!file) {
+      return;
+    }
+
+    event.preventDefault();
+    selectImage(file);
+  });
+
+  fileInput.addEventListener("change", () => {
+    const file = getImageFileFromFileList(fileInput.files);
+    selectImage(file);
+  });
+
+  removeButton.addEventListener("click", () => {
+    clearImageAttachment(format.id, field.id);
+    setFieldError(panel, field.id, "");
+    uploadArea.focus();
+  });
 }
 
 function syncActiveView() {
@@ -430,7 +732,7 @@ function refreshOutput(format, outputElement) {
 
 function refreshFormatOutput(formatId) {
   const format = formatMap[formatId];
-  const panel = formsRoot.querySelector(`[data-format-panel="${formatId}"]`);
+  const panel = getPanel(formatId);
   const outputElement = panel?.querySelector(`[data-output="${formatId}"]`);
   if (format && outputElement) {
     refreshOutput(format, outputElement);
@@ -439,13 +741,30 @@ function refreshFormatOutput(formatId) {
 
 function getNormalizedValues(formatId) {
   const currentValues = state.values[formatId];
-  return Object.fromEntries(
-    Object.entries(currentValues).map(([key, value]) => [key, value.trim()]),
-  );
+  const format = formatMap[formatId];
+  const normalizedValues = {};
+
+  for (const field of format.fields) {
+    normalizedValues[field.id] = isImageField(field)
+      ? getImageOutputValue(formatId, field.id)
+      : normalizeValue(currentValues[field.id]);
+  }
+
+  return normalizedValues;
 }
 
-function validateField(panel, field, value) {
-  const message = value.trim() ? "" : "יש למלא את השדה הזה.";
+function getImageOutputValue(formatId, fieldId) {
+  return hasImageAttachment(formatId, fieldId) ? IMAGE_ATTACHED_TEXT : "";
+}
+
+function validateField(panel, format, field, value = "") {
+  const message = isImageField(field)
+    ? hasImageAttachment(format.id, field.id)
+      ? ""
+      : IMAGE_REQUIRED_MESSAGE
+    : normalizeValue(value)
+      ? ""
+      : "יש למלא את השדה הזה.";
   setFieldError(panel, field.id, message);
   return !message;
 }
@@ -453,8 +772,10 @@ function validateField(panel, field, value) {
 function validateForm(format, panel) {
   let isValid = true;
   for (const field of format.fields) {
-    const input = panel.querySelector(`#${format.id}-${field.id}`);
-    const fieldValid = validateField(panel, field, input.value);
+    const inputValue = isImageField(field)
+      ? ""
+      : panel.querySelector(`#${format.id}-${field.id}`)?.value || "";
+    const fieldValid = validateField(panel, format, field, inputValue);
     if (!fieldValid) {
       isValid = false;
     }
@@ -486,6 +807,12 @@ function clearFormatFields(format, panel) {
   const form = panel.querySelector(`[data-format-form="${format.id}"]`);
 
   for (const field of format.fields) {
+    if (isImageField(field)) {
+      clearImageAttachment(format.id, field.id);
+      setFieldError(panel, field.id, "");
+      continue;
+    }
+
     updateFieldValue(format.id, field.id, "");
     const input = form.elements.namedItem(field.id);
     input.value = "";
@@ -497,7 +824,7 @@ function clearFormatFields(format, panel) {
 }
 
 function syncFieldValue(formatId, fieldId, value) {
-  const panel = formsRoot.querySelector(`[data-format-panel="${formatId}"]`);
+  const panel = getPanel(formatId);
   const input = panel?.querySelector(`#${formatId}-${fieldId}`);
   if (input) {
     input.value = value;
@@ -534,10 +861,198 @@ function normalizeValue(value) {
 }
 
 function escapeHtml(value) {
-  return value
+  return String(value)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function getPanel(formatId) {
+  return formsRoot.querySelector(`[data-format-panel="${formatId}"]`);
+}
+
+function getImageAttachment(formatId, fieldId) {
+  return imageState?.[formatId]?.[fieldId] || "";
+}
+
+function hasImageAttachment(formatId, fieldId) {
+  return Boolean(getImageAttachment(formatId, fieldId));
+}
+
+function setImageAttachment(formatId, fieldId, dataUrl) {
+  if (!imageState[formatId]) {
+    imageState[formatId] = {};
+  }
+
+  imageState[formatId][fieldId] = dataUrl;
+  const storageResult = syncImageStorage();
+  syncImageFieldUi(formatId, fieldId);
+  refreshFormatOutput(formatId);
+  return storageResult;
+}
+
+function clearImageAttachment(formatId, fieldId) {
+  if (!imageState[formatId]) {
+    imageState[formatId] = {};
+  }
+
+  imageState[formatId][fieldId] = "";
+  syncImageStorage();
+  syncImageFieldUi(formatId, fieldId);
+  refreshFormatOutput(formatId);
+}
+
+function syncImageFieldUi(formatId, fieldId) {
+  const panel = getPanel(formatId);
+  if (!panel) {
+    return;
+  }
+
+  const field = formatMap[formatId]?.fields.find((candidate) => candidate.id === fieldId);
+  const dataUrl = getImageAttachment(formatId, fieldId);
+  const hasImage = Boolean(dataUrl);
+  const uploadArea = panel.querySelector(`[data-image-upload="${fieldId}"]`);
+  const emptyState = panel.querySelector(`[data-image-empty="${fieldId}"]`);
+  const previewWrap = panel.querySelector(`[data-image-preview="${fieldId}"]`);
+  const previewImage = panel.querySelector(`[data-image-preview-img="${fieldId}"]`);
+  const removeButton = panel.querySelector(`[data-image-remove="${fieldId}"]`);
+  const statusText = panel.querySelector(`[data-image-status="${fieldId}"]`);
+  const fileInput = panel.querySelector(`[data-image-input="${fieldId}"]`);
+  const outputCard = panel.querySelector(`[data-output-image-card="${fieldId}"]`);
+  const outputImage = panel.querySelector(`[data-output-image-preview="${fieldId}"]`);
+
+  uploadArea.classList.toggle("has-image", hasImage);
+  uploadArea.classList.remove("is-dragging");
+  emptyState.hidden = hasImage;
+  previewWrap.hidden = !hasImage;
+  removeButton.hidden = !hasImage;
+  statusText.textContent = hasImage ? IMAGE_ATTACHED_TEXT : field?.helperText || IMAGE_UPLOAD_HELPER_TEXT;
+  statusText.classList.toggle("is-attached", hasImage);
+
+  if (hasImage) {
+    previewImage.src = dataUrl;
+    outputCard.hidden = false;
+    outputImage.src = dataUrl;
+    uploadArea.setAttribute("aria-label", `${field.label}: ${IMAGE_ATTACHED_TEXT}`);
+  } else {
+    previewImage.removeAttribute("src");
+    outputCard.hidden = true;
+    outputImage.removeAttribute("src");
+    uploadArea.setAttribute("aria-label", field?.helperText || IMAGE_UPLOAD_HELPER_TEXT);
+    if (fileInput) {
+      fileInput.value = "";
+    }
+  }
+}
+
+function getImageFileFromClipboard(clipboardData) {
+  return getImageFileFromItems(clipboardData?.items) || getImageFileFromFileList(clipboardData?.files);
+}
+
+function getImageFileFromDataTransfer(dataTransfer) {
+  return getImageFileFromItems(dataTransfer?.items) || getImageFileFromFileList(dataTransfer?.files);
+}
+
+function getImageFileFromItems(items) {
+  if (!items) {
+    return null;
+  }
+
+  for (const item of Array.from(items)) {
+    if (item.kind === "file" && item.type.startsWith("image/")) {
+      return item.getAsFile();
+    }
+  }
+
+  return null;
+}
+
+function getImageFileFromFileList(files) {
+  if (!files) {
+    return null;
+  }
+
+  for (const file of Array.from(files)) {
+    if (file.type.startsWith("image/")) {
+      return file;
+    }
+  }
+
+  return null;
+}
+
+async function buildImageDataUrl(file) {
+  if (!file || !file.type.startsWith("image/")) {
+    throw new Error("INVALID_IMAGE");
+  }
+
+  const originalDataUrl = await readFileAsDataUrl(file);
+  const compressedDataUrl = await compressImageDataUrl(originalDataUrl);
+  if (isBetterImageDataUrl(originalDataUrl, compressedDataUrl)) {
+    return compressedDataUrl;
+  }
+
+  return originalDataUrl;
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("READ_FAILED"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function compressImageDataUrl(dataUrl) {
+  try {
+    const image = await loadImage(dataUrl);
+    const dimensions = getScaledDimensions(image.naturalWidth, image.naturalHeight);
+    const canvas = document.createElement("canvas");
+    canvas.width = dimensions.width;
+    canvas.height = dimensions.height;
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return dataUrl;
+    }
+
+    context.drawImage(image, 0, 0, dimensions.width, dimensions.height);
+    return canvas.toDataURL("image/webp", IMAGE_COMPRESSION_QUALITY);
+  } catch (error) {
+    return dataUrl;
+  }
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("IMAGE_LOAD_FAILED"));
+    image.src = src;
+  });
+}
+
+function getScaledDimensions(width, height) {
+  const largestSide = Math.max(width, height);
+  if (!largestSide || largestSide <= MAX_IMAGE_DIMENSION) {
+    return { width, height };
+  }
+
+  const scale = MAX_IMAGE_DIMENSION / largestSide;
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+  };
+}
+
+function isBetterImageDataUrl(originalDataUrl, candidateDataUrl) {
+  return (
+    typeof candidateDataUrl === "string" &&
+    candidateDataUrl.startsWith("data:image/") &&
+    candidateDataUrl.length > 0 &&
+    candidateDataUrl.length < originalDataUrl.length
+  );
 }

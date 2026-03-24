@@ -346,6 +346,18 @@ button {
   gap: 8px;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .field-label {
   font-weight: 700;
 }
@@ -382,6 +394,93 @@ button {
 .field-group.has-error .field-input {
   border-color: rgba(255, 111, 132, 0.8);
   box-shadow: 0 0 0 4px rgba(255, 82, 111, 0.16);
+}
+
+.field-group.has-error .image-upload {
+  border-color: rgba(255, 111, 132, 0.8);
+  box-shadow: 0 0 0 4px rgba(255, 82, 111, 0.16);
+}
+
+.image-upload {
+  display: grid;
+  gap: 12px;
+  min-height: 210px;
+  padding: 18px;
+  border-radius: var(--radius-md);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.05);
+  text-align: center;
+  align-content: center;
+  justify-items: center;
+  transition:
+    border-color var(--transition),
+    background var(--transition),
+    transform var(--transition),
+    box-shadow var(--transition);
+}
+
+.image-upload:hover,
+.image-upload:focus-visible,
+.image-upload.is-dragging {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.26);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 4px rgba(255, 66, 95, 0.14);
+}
+
+.image-upload.has-image {
+  align-content: stretch;
+  justify-items: stretch;
+}
+
+.image-upload-empty {
+  display: grid;
+  gap: 6px;
+}
+
+.image-upload-title {
+  font-weight: 800;
+  font-size: 1.02rem;
+}
+
+.image-upload-helper {
+  color: var(--text-dim);
+}
+
+.image-upload-preview {
+  width: 100%;
+}
+
+.image-upload-preview img {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  object-fit: contain;
+  border-radius: calc(var(--radius-md) - 4px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.image-field-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.image-status {
+  color: var(--text-dim);
+  font-weight: 700;
+}
+
+.image-status.is-attached {
+  color: #8ff1b2;
+}
+
+.image-remove-button {
+  min-height: 44px;
+  padding: 0 18px;
 }
 
 .field-error {
@@ -426,8 +525,8 @@ button {
 
 .output-card {
   display: grid;
-  grid-template-rows: auto auto 1fr auto auto;
   gap: 18px;
+  align-content: start;
 }
 
 .output-toolbar {
@@ -441,6 +540,32 @@ button {
   min-height: 24px;
   color: #8ff1b2;
   font-weight: 700;
+}
+
+.output-image-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)),
+    rgba(0, 0, 0, 0.16);
+}
+
+.output-image-label {
+  font-weight: 800;
+  color: var(--text-soft);
+}
+
+.output-image-preview {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  object-fit: contain;
+  border-radius: calc(var(--radius-md) - 4px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.24);
 }
 
 .icon-button {
@@ -545,6 +670,11 @@ button {
 
   .panel-actions,
   .setting-actions {
+    flex-direction: column;
+  }
+
+  .image-field-actions {
+    align-items: stretch;
     flex-direction: column;
   }
 
