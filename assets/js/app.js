@@ -1154,11 +1154,11 @@ function isPublicImageUrl(value) {
 
 function buildTmpFilesDirectUrl(value) {
   const normalizedValue = normalizeValue(value);
-  if (!normalizedValue.startsWith("https://tmpfiles.org/")) {
+  if (!/^https?:\/\/tmpfiles\.org\//i.test(normalizedValue)) {
     return "";
   }
 
-  return normalizedValue.replace("https://tmpfiles.org/", "https://tmpfiles.org/dl/");
+  return normalizedValue.replace(/^https?:\/\/tmpfiles\.org\//i, "https://tmpfiles.org/dl/");
 }
 
 async function buildImageDataUrl(file) {
