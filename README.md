@@ -14,7 +14,7 @@ A fully static Hebrew RTL website for generating copy-ready text formats for MDA
 - Persistent fixed-name autofill for relevant name fields
 - Persistent fixed command-tag autofill for all personal command-tag fields
 - Per-format reset action that preserves permanent saved settings
-- Vehicle abandonment format supports browser image paste, upload, drag-and-drop, preview, remove actions, and public-link copy for Discord-style sharing
+- Vehicle abandonment format supports browser image paste, upload, drag-and-drop, preview, remove actions, and automatic public-link copy for Discord-style sharing
 - Required-field validation
 - Mobile-friendly polished interface
 - GitHub Actions workflow for GitHub Pages deployment
@@ -44,7 +44,7 @@ A fully static Hebrew RTL website for generating copy-ready text formats for MDA
 2. Open `index.html` directly in a browser, or serve the folder with any static file server.
 3. Use the fixed settings controls to save a reusable name and a reusable Discord command tag in browser local storage.
 4. Use the `איפוס` button inside a format to clear only that format while keeping permanent saved settings such as the fixed name and fixed command tag.
-5. In the vehicle abandonment format, you can paste an image from the clipboard or upload one directly in the browser, use `העתק` for plain text, or use `העתק עם קישור` to upload the attached image to a public URL and copy the format with that link for easier Discord sharing.
+5. In the vehicle abandonment format, you can paste an image from the clipboard or upload one directly in the browser. When you use `העתק`, the app will try to upload the attached image to a public URL first and then copy the format with that image link.
 
 ## Deployment
 

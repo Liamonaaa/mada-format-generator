@@ -502,7 +502,6 @@ function renderPanels() {
                 <button class="action-button primary" type="button" data-copy-button="${format.id}">
                   העתק
                 </button>
-                ${renderDiscordCopyButtonMarkup(format)}
                 <button class="action-button secondary" type="button" data-clear-button="${format.id}">
                   נקה
                 </button>
@@ -569,12 +568,6 @@ function renderPanels() {
     panel
       .querySelector(`[data-copy-button="${format.id}"]`)
       .addEventListener("click", () => handleCopy(format, panel, outputElement, copyStateElement));
-
-    panel
-      .querySelector(`[data-discord-copy-button="${format.id}"]`)
-      ?.addEventListener("click", () =>
-        handleDiscordCopy(format, panel, outputElement, copyStateElement),
-      );
 
     panel
       .querySelector(`[data-icon-copy="${format.id}"]`)
@@ -670,18 +663,6 @@ function renderOutputImageMarkup(format) {
       <div class="output-image-label">${imageField.label}</div>
       <img class="output-image-preview" data-output-image-preview="${imageField.id}" alt="${IMAGE_PREVIEW_ALT}" />
     </div>
-  `;
-}
-
-function renderDiscordCopyButtonMarkup(format) {
-  if (!format.fields.some(isImageField)) {
-    return "";
-  }
-
-  return `
-    <button class="action-button secondary" type="button" data-discord-copy-button="${format.id}">
-      העתק עם קישור
-    </button>
   `;
 }
 
@@ -896,37 +877,27 @@ async function handleCopy(format, panel, outputElement, copyStateElement) {
   }
 
   try {
+    const imageField = format.fields.find(isImageField);
+    if (imageField && hasImageAttachment(format.id, imageField.id)) {
+      const publicUrl = await ensurePublicImageUrl(format.id, imageField.id);
+      if (!isPublicImageUrl(publicUrl)) {
+        throw new Error("PUBLIC_URL_MISSING");
+      }
+
+      const textWithPublicLink = buildOutputText(format.id, { preferPublicImageUrl: true });
+      await navigator.clipboard.writeText(textWithPublicLink);
+      outputElement.textContent = textWithPublicLink;
+      showTimedMessage(copyStateElement, IMAGE_LINK_COPY_SUCCESS_MESSAGE);
+      return;
+    }
+
     await navigator.clipboard.writeText(outputElement.textContent);
     showTimedMessage(copyStateElement, "הטקסט הועתק");
   } catch (error) {
-    showTimedMessage(copyStateElement, "לא ניתן היה להעתיק. נסו שוב.");
-  }
-}
-
-async function handleDiscordCopy(format, panel, outputElement, copyStateElement) {
-  if (!validateForm(format, panel)) {
-    showTimedMessage(copyStateElement, "יש למלא את כל השדות לפני ההעתקה.");
-    return;
-  }
-
-  const imageField = format.fields.find(isImageField);
-  if (!imageField || !hasImageAttachment(format.id, imageField.id)) {
-    await handleCopy(format, panel, outputElement, copyStateElement);
-    return;
-  }
-
-  try {
-    const publicUrl = await ensurePublicImageUrl(format.id, imageField.id);
-    if (!isPublicImageUrl(publicUrl)) {
-      throw new Error("PUBLIC_URL_MISSING");
-    }
-
-    const textWithPublicLink = buildOutputText(format.id, { preferPublicImageUrl: true });
-    await navigator.clipboard.writeText(textWithPublicLink);
-    outputElement.textContent = textWithPublicLink;
-    showTimedMessage(copyStateElement, IMAGE_LINK_COPY_SUCCESS_MESSAGE);
-  } catch (error) {
-    showTimedMessage(copyStateElement, IMAGE_LINK_COPY_ERROR_MESSAGE);
+    showTimedMessage(
+      copyStateElement,
+      format.fields.some(isImageField) ? IMAGE_LINK_COPY_ERROR_MESSAGE : "לא ניתן היה להעתיק. נסו שוב.",
+    );
   }
 }
 
