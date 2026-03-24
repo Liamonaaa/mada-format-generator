@@ -16,7 +16,7 @@ const IMAGE_PERSIST_WARNING = "התמונה צורפה זמנית בלבד ול�
 const IMAGE_LOAD_ERROR = "לא ניתן היה לטעון את התמונה. נסו קובץ אחר.";
 const IMAGE_LINK_COPY_SUCCESS_MESSAGE = "נוצר קישור ציבורי לתמונה והפורמט הועתק";
 const IMAGE_LINK_COPY_ERROR_MESSAGE = "לא ניתן היה ליצור קישור ציבורי לתמונה. נסו שוב.";
-const PUBLIC_IMAGE_UPLOAD_URL = "https://catbox.moe/user/api.php";
+const PUBLIC_IMAGE_UPLOAD_URL = "https://tmpfiles.org/api/v1/upload";
 const MAX_PERSISTED_IMAGE_LENGTH = 900000;
 const MAX_IMAGE_DIMENSION = 1280;
 const IMAGE_COMPRESSION_QUALITY = 0.82;
@@ -1127,8 +1127,7 @@ async function ensurePublicImageUrl(formatId, fieldId) {
 
   const pngBlob = await dataUrlToPngBlob(imageDataUrl);
   const formData = new FormData();
-  formData.append("reqtype", "fileupload");
-  formData.append("fileToUpload", pngBlob, `mada-${Date.now()}.png`);
+  formData.append("file", pngBlob, `mada-${Date.now()}.png`);
 
   const response = await fetch(PUBLIC_IMAGE_UPLOAD_URL, {
     method: "POST",
@@ -1139,17 +1138,27 @@ async function ensurePublicImageUrl(formatId, fieldId) {
     throw new Error("PUBLIC_UPLOAD_FAILED");
   }
 
-  const responseText = normalizeValue(await response.text());
-  if (!isPublicImageUrl(responseText)) {
+  const payload = await response.json();
+  const publicUrl = buildTmpFilesDirectUrl(payload?.data?.url);
+  if (!isPublicImageUrl(publicUrl)) {
     throw new Error("INVALID_PUBLIC_URL");
   }
 
-  setPublicImageUrl(formatId, fieldId, responseText);
-  return responseText;
+  setPublicImageUrl(formatId, fieldId, publicUrl);
+  return publicUrl;
 }
 
 function isPublicImageUrl(value) {
   return typeof value === "string" && /^https?:\/\/\S+$/i.test(value.trim());
+}
+
+function buildTmpFilesDirectUrl(value) {
+  const normalizedValue = normalizeValue(value);
+  if (!normalizedValue.startsWith("https://tmpfiles.org/")) {
+    return "";
+  }
+
+  return normalizedValue.replace("https://tmpfiles.org/", "https://tmpfiles.org/dl/");
 }
 
 async function buildImageDataUrl(file) {
