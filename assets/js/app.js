@@ -13,6 +13,8 @@ const IMAGE_UPLOAD_SUBTEXT = "אפשר גם לגרור תמונה לכאן";
 const IMAGE_PREVIEW_ALT = "תצוגה מקדימה של תמונת הניידת";
 const IMAGE_PERSIST_WARNING = "התמונה צורפה זמנית בלבד ולא נשמרה בדפדפן.";
 const IMAGE_LOAD_ERROR = "לא ניתן היה לטעון את התמונה. נסו קובץ אחר.";
+const DISCORD_COPY_SUCCESS_MESSAGE = "הטקסט והתמונה הועתקו להדבקה בדיסקורד";
+const DISCORD_COPY_FALLBACK_MESSAGE = "הדפדפן לא תומך בהעתקת תמונה. הועתק רק הטקסט.";
 const MAX_PERSISTED_IMAGE_LENGTH = 900000;
 const MAX_IMAGE_DIMENSION = 1280;
 const IMAGE_COMPRESSION_QUALITY = 0.82;
@@ -430,6 +432,7 @@ function renderPanels() {
                 <button class="action-button primary" type="button" data-copy-button="${format.id}">
                   העתק
                 </button>
+                ${renderDiscordCopyButtonMarkup(format)}
                 <button class="action-button secondary" type="button" data-clear-button="${format.id}">
                   נקה
                 </button>
@@ -496,6 +499,12 @@ function renderPanels() {
     panel
       .querySelector(`[data-copy-button="${format.id}"]`)
       .addEventListener("click", () => handleCopy(format, panel, outputElement, copyStateElement));
+
+    panel
+      .querySelector(`[data-discord-copy-button="${format.id}"]`)
+      ?.addEventListener("click", () =>
+        handleDiscordCopy(format, panel, outputElement, copyStateElement),
+      );
 
     panel
       .querySelector(`[data-icon-copy="${format.id}"]`)
@@ -591,6 +600,18 @@ function renderOutputImageMarkup(format) {
       <div class="output-image-label">${imageField.label}</div>
       <img class="output-image-preview" data-output-image-preview="${imageField.id}" alt="${IMAGE_PREVIEW_ALT}" />
     </div>
+  `;
+}
+
+function renderDiscordCopyButtonMarkup(format) {
+  if (!format.fields.some(isImageField)) {
+    return "";
+  }
+
+  return `
+    <button class="action-button secondary" type="button" data-discord-copy-button="${format.id}">
+      העתק לדיסקורד
+    </button>
   `;
 }
 
@@ -798,6 +819,29 @@ async function handleCopy(format, panel, outputElement, copyStateElement) {
   }
 }
 
+async function handleDiscordCopy(format, panel, outputElement, copyStateElement) {
+  if (!validateForm(format, panel)) {
+    showTimedMessage(copyStateElement, "יש למלא את כל השדות לפני ההעתקה.");
+    return;
+  }
+
+  const imageField = format.fields.find(isImageField);
+  if (!imageField || !hasImageAttachment(format.id, imageField.id)) {
+    await handleCopy(format, panel, outputElement, copyStateElement);
+    return;
+  }
+
+  try {
+    const copiedRichContent = await copyOutputForDiscord(format.id, outputElement.textContent);
+    showTimedMessage(
+      copyStateElement,
+      copiedRichContent ? DISCORD_COPY_SUCCESS_MESSAGE : DISCORD_COPY_FALLBACK_MESSAGE,
+    );
+  } catch (error) {
+    showTimedMessage(copyStateElement, "לא ניתן היה להעתיק לדיסקורד. נסו שוב.");
+  }
+}
+
 function handleReset(format, panel, messageElement) {
   clearFormatFields(format, panel);
   showTimedMessage(messageElement, "הפורמט אופס");
@@ -983,6 +1027,33 @@ function getImageFileFromFileList(files) {
   return null;
 }
 
+async function copyOutputForDiscord(formatId, textContent) {
+  const imageFieldId = formatMap[formatId]?.fields.find(isImageField)?.id;
+  const imageDataUrl = imageFieldId ? getImageAttachment(formatId, imageFieldId) : "";
+  if (!imageDataUrl || !canWriteRichClipboard()) {
+    await navigator.clipboard.writeText(textContent);
+    return false;
+  }
+
+  const pngBlob = await dataUrlToPngBlob(imageDataUrl);
+  const clipboardItem = new ClipboardItem({
+    "text/plain": new Blob([textContent], { type: "text/plain" }),
+    "image/png": pngBlob,
+  });
+
+  await navigator.clipboard.write([clipboardItem]);
+  return true;
+}
+
+function canWriteRichClipboard() {
+  return Boolean(
+    window.isSecureContext &&
+      navigator.clipboard &&
+      typeof navigator.clipboard.write === "function" &&
+      typeof ClipboardItem !== "undefined",
+  );
+}
+
 async function buildImageDataUrl(file) {
   if (!file || !file.type.startsWith("image/")) {
     throw new Error("INVALID_IMAGE");
@@ -1032,6 +1103,32 @@ function loadImage(src) {
     image.onload = () => resolve(image);
     image.onerror = () => reject(new Error("IMAGE_LOAD_FAILED"));
     image.src = src;
+  });
+}
+
+async function dataUrlToPngBlob(dataUrl) {
+  const image = await loadImage(dataUrl);
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("CANVAS_CONTEXT_UNAVAILABLE");
+  }
+
+  context.drawImage(image, 0, 0);
+  const blob = await canvasToBlob(canvas, "image/png");
+  if (!blob) {
+    throw new Error("PNG_EXPORT_FAILED");
+  }
+
+  return blob;
+}
+
+function canvasToBlob(canvas, type) {
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), type);
   });
 }
 
