@@ -10,8 +10,8 @@ const STORAGE_KEYS = {
 const IMAGE_FIELD_TYPE = "image";
 const IMAGE_ATTACHED_TEXT = "צורפה תמונה";
 const IMAGE_REQUIRED_MESSAGE = "יש לצרף תמונה.";
-const IMAGE_UPLOAD_HELPER_TEXT = "הדביקו תמונה או לחצו להעלאה";
-const IMAGE_UPLOAD_SUBTEXT = "אפשר גם לגרור תמונה לכאן";
+const IMAGE_UPLOAD_HELPER_TEXT = "הדביקו תמונה לכאן (Ctrl+V)";
+const IMAGE_UPLOAD_SUBTEXT = "אפשר גם לגרור תמונה מהמחשב";
 const IMAGE_PREVIEW_ALT = "תצוגה מקדימה של תמונת הניידת";
 const IMAGE_PERSIST_WARNING = "התמונה צורפה זמנית בלבד ולא נשמרה בדפדפן.";
 const IMAGE_LOAD_ERROR = "לא ניתן היה לטעון את התמונה. נסו קובץ אחר.";
@@ -725,18 +725,7 @@ function bindImageField(panel, format, field) {
     }
   };
 
-  uploadArea.addEventListener("click", () => {
-    fileInput.click();
-  });
-
-  uploadArea.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" && event.key !== " ") {
-      return;
-    }
-
-    event.preventDefault();
-    fileInput.click();
-  });
+  // The click and keydown listeners to open the file picker have been removed
 
   uploadArea.addEventListener("paste", (event) => {
     const file = getImageFileFromClipboard(event.clipboardData);
