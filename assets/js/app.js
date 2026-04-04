@@ -54,14 +54,7 @@ const formatDefinitions = [
       { id: "name", label: "שם", placeholder: "הקלידו שם" },
       { id: "reason", label: "סיבה", placeholder: "מהי הסיבה?" },
       { id: "location", label: "מיקום", placeholder: "ציינו מיקום" },
-      {
-        id: "image",
-        type: IMAGE_FIELD_TYPE,
-        label: "תמונה של הניידת",
-        helperText: IMAGE_UPLOAD_HELPER_TEXT,
-        subText: IMAGE_UPLOAD_SUBTEXT,
-        removeLabel: "הסר תמונה",
-      },
+      { id: "image", label: "קישור לתמונה", placeholder: "הדביקו קישור לתמונה" },
       { id: "commandTag", label: "תיוג הפיקוד האישי", placeholder: "הקלידו תיוג" },
     ],
     buildOutput(values) {
