@@ -54,7 +54,8 @@ const formatDefinitions = [
       { id: "name", label: "שם", placeholder: "הקלידו שם" },
       { id: "reason", label: "סיבה", placeholder: "מהי הסיבה?" },
       { id: "location", label: "מיקום", placeholder: "ציינו מיקום" },
-      { id: "image", label: "קישור לתמונה", placeholder: "הדביקו קישור לתמונה" },
+      { id: "image", label: "קישור לתמונה של הניידת", placeholder: "הדביקו קישור לתמונה" },
+      { id: "mapImage", label: "קישור לתמונה של המפה", placeholder: "הדביקו קישור לתמונת מפה" },
       { id: "commandTag", label: "תיוג הפיקוד האישי", placeholder: "הקלידו תיוג" },
     ],
     buildOutput(values) {
@@ -64,6 +65,7 @@ const formatDefinitions = [
         `סיבה: ${values.reason}`,
         `מיקום: ${values.location}`,
         `תמונה של הניידת: ${values.image}`,
+        `תמונה של המפה: ${values.mapImage}`,
         `תיוג הפיקוד האישי: ${values.commandTag}`,
       ].join("\n");
     },
