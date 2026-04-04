@@ -16,7 +16,7 @@ const IMAGE_PERSIST_WARNING = "התמונה צורפה זמנית בלבד ול�
 const IMAGE_LOAD_ERROR = "לא ניתן היה לטעון את התמונה. נסו קובץ אחר.";
 const IMAGE_LINK_COPY_SUCCESS_MESSAGE = "נוצר קישור ציבורי לתמונה והפורמט הועתק";
 const IMAGE_LINK_COPY_ERROR_MESSAGE = "לא ניתן היה ליצור קישור ציבורי לתמונה. נסו שוב.";
-const DISCORD_WEBHOOK_URL = ""; // יש להדביק פה את הקישור של ה-Webhook מהדיסקורד
+const PUBLIC_IMAGE_UPLOAD_URL = "https://tmpfiles.org/api/v1/upload";
 const MAX_PERSISTED_IMAGE_LENGTH = 900000;
 const MAX_IMAGE_DIMENSION = 1280;
 const IMAGE_COMPRESSION_QUALITY = 0.82;
@@ -1141,18 +1141,11 @@ async function ensurePublicImageUrl(formatId, fieldId) {
     return "";
   }
 
-  if (!DISCORD_WEBHOOK_URL) {
-    alert("שגיאה: לא הוגדר קישור Webhook של דיסקורד בקוד (DISCORD_WEBHOOK_URL).");
-    throw new Error("MISSING_WEBHOOK_URL");
-  }
-
   const pngBlob = await dataUrlToPngBlob(imageDataUrl);
   const formData = new FormData();
   formData.append("file", pngBlob, `mada-${Date.now()}.png`);
 
-  const uploadUrl = DISCORD_WEBHOOK_URL.includes("?") ? `${DISCORD_WEBHOOK_URL}&wait=true` : `${DISCORD_WEBHOOK_URL}?wait=true`;
-
-  const response = await fetch(uploadUrl, {
+  const response = await fetch(PUBLIC_IMAGE_UPLOAD_URL, {
     method: "POST",
     body: formData,
   });
@@ -1162,7 +1155,7 @@ async function ensurePublicImageUrl(formatId, fieldId) {
   }
 
   const payload = await response.json();
-  const publicUrl = payload?.attachments?.[0]?.url;
+  const publicUrl = buildTmpFilesDirectUrl(payload?.data?.url);
 
   if (!isPublicImageUrl(publicUrl)) {
     throw new Error("INVALID_PUBLIC_URL");
