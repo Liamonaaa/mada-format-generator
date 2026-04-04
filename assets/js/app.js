@@ -670,17 +670,21 @@ function renderImageFieldMarkup(format, field) {
 }
 
 function renderOutputImageMarkup(format) {
-  const imageField = format.fields.find(isImageField);
-  if (!imageField) {
+  const imageFields = format.fields.filter(isImageField);
+  if (imageFields.length === 0) {
     return "";
   }
 
-  return `
+  return imageFields
+    .map(
+      (imageField) => `
     <div class="output-image-card" data-output-image-card="${imageField.id}" hidden>
       <div class="output-image-label">${imageField.label}</div>
       <img class="output-image-preview" data-output-image-preview="${imageField.id}" alt="${IMAGE_PREVIEW_ALT}" />
     </div>
-  `;
+  `,
+    )
+    .join("");
 }
 
 function bindImageField(panel, format, field) {
@@ -1075,15 +1079,15 @@ function syncImageFieldUi(formatId, fieldId) {
   statusText.classList.toggle("is-attached", hasImage);
 
   if (hasImage) {
-    previewImage.src = dataUrl;
-    outputCard.hidden = false;
-    outputImage.src = dataUrl;
-    uploadArea.setAttribute("aria-label", `${field.label}: ${IMAGE_ATTACHED_TEXT}`);
+    if (previewImage) previewImage.src = dataUrl;
+    if (outputCard) outputCard.hidden = false;
+    if (outputImage) outputImage.src = dataUrl;
+    if (uploadArea) uploadArea.setAttribute("aria-label", `${field.label}: ${IMAGE_ATTACHED_TEXT}`);
   } else {
-    previewImage.removeAttribute("src");
-    outputCard.hidden = true;
-    outputImage.removeAttribute("src");
-    uploadArea.setAttribute("aria-label", field?.helperText || IMAGE_UPLOAD_HELPER_TEXT);
+    if (previewImage) previewImage.removeAttribute("src");
+    if (outputCard) outputCard.hidden = true;
+    if (outputImage) outputImage.removeAttribute("src");
+    if (uploadArea) uploadArea.setAttribute("aria-label", field?.helperText || IMAGE_UPLOAD_HELPER_TEXT);
     if (fileInput) {
       fileInput.value = "";
     }
