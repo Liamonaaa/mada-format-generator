@@ -99,6 +99,37 @@
 
             <div class="settings-state" id="fixed-command-tag-feedback" aria-live="polite"></div>
           </section>
+
+          <section class="setting-card" aria-label="קישור Webhook של דיסקורד">
+            <div>
+              <h3 class="setting-title">קישור Webhook של דיסקורד</h3>
+              <p class="setting-copy">הדביקו כאן את הקישור לערוץ פרטי בדיסקורד כדי שהתמונות יעלו לשם אוטומטית (עוקף חסימות של האנטי-צ'יט).</p>
+            </div>
+
+            <div class="setting-controls">
+              <div class="field-group setting-field">
+                <label class="field-label" for="discord-webhook-input">קישור Webhook</label>
+                <input
+                  class="field-input"
+                  id="discord-webhook-input"
+                  type="text"
+                  autocomplete="off"
+                  placeholder="https://discord.com/api/webhooks/..."
+                />
+              </div>
+
+              <div class="setting-actions">
+                <button class="action-button primary" id="discord-webhook-save" type="button">
+                  שמור
+                </button>
+                <button class="action-button secondary" id="discord-webhook-clear" type="button">
+                  נקה קישור
+                </button>
+              </div>
+            </div>
+
+            <div class="settings-state" id="discord-webhook-feedback" aria-live="polite"></div>
+          </section>
         </div>
       </section>
 

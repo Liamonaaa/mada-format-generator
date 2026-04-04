@@ -2,6 +2,7 @@ const STORAGE_KEYS = {
   formState: "mada-format-generator-state",
   fixedName: "mada-format-generator-fixed-name",
   fixedCommandTag: "mada-format-generator-fixed-command-tag",
+  discordWebhook: "mada-format-generator-discord-webhook",
   imageState: "mada-format-generator-image-state",
   imageLinkState: "mada-format-generator-image-link-state",
 };
@@ -108,6 +109,18 @@ const formatDefinitions = [
 ];
 
 const persistentSettingDefinitions = [
+  {
+    id: "discordWebhook",
+    storageKey: STORAGE_KEYS.discordWebhook,
+    inputId: "discord-webhook-input",
+    saveButtonId: "discord-webhook-save",
+    clearButtonId: "discord-webhook-clear",
+    feedbackId: "discord-webhook-feedback",
+    emptyMessage: "יש להזין קישור Webhook לפני שמירה.",
+    saveMessage: "קישור ה-Webhook נשמר בהצלחה",
+    clearMessage: "קישור ה-Webhook נמחק",
+    targets: {},
+  },
   {
     id: "fixedName",
     storageKey: STORAGE_KEYS.fixedName,
@@ -886,54 +899,33 @@ async function handleCopy(format, panel, outputElement, copyStateElement) {
   }
 
   try {
-    const textOutput = buildOutputText(format.id, { preferPublicImageUrl: false });
-    const textBlob = new Blob([textOutput], { type: "text/plain" });
-    const clipboardData = { "text/plain": textBlob };
-
     const imageFields = format.fields.filter(isImageField);
-    const images = [];
+    let hasAnyImage = false;
 
-    for (const field of imageFields) {
-      const dataUrl = getImageAttachment(format.id, field.id);
-      if (dataUrl) {
-        images.push(await loadImage(dataUrl));
-      }
-    }
-
-    if (images.length > 0) {
-      const padding = 20;
-      const width = Math.max(...images.map((img) => img.naturalWidth));
-      const height = images.reduce((acc, img) => acc + img.naturalHeight, 0) + padding * (images.length - 1);
-
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const context = canvas.getContext("2d");
-
-      if (context) {
-        let currentY = 0;
-        for (const img of images) {
-          const x = (width - img.naturalWidth) / 2;
-          context.drawImage(img, x, currentY);
-          currentY += img.naturalHeight + padding;
-        }
-
-        const pngBlob = await canvasToBlob(canvas, "image/png");
-        if (pngBlob) {
-          clipboardData["image/png"] = pngBlob;
+    for (const imageField of imageFields) {
+      if (hasImageAttachment(format.id, imageField.id)) {
+        hasAnyImage = true;
+        const publicUrl = await ensurePublicImageUrl(format.id, imageField.id);
+        if (!isPublicImageUrl(publicUrl)) {
+          throw new Error("PUBLIC_URL_MISSING");
         }
       }
     }
 
-    const clipboardItem = new ClipboardItem(clipboardData);
-    await navigator.clipboard.write([clipboardItem]);
+    if (hasAnyImage) {
+      const textWithPublicLink = buildOutputText(format.id, { preferPublicImageUrl: true });
+      await navigator.clipboard.writeText(textWithPublicLink);
+      outputElement.textContent = textWithPublicLink;
+      showTimedMessage(copyStateElement, IMAGE_LINK_COPY_SUCCESS_MESSAGE);
+      return;
+    }
 
-    outputElement.textContent = textOutput;
-    showTimedMessage(copyStateElement, images.length > 0 ? "הטקסט והתמונות הועתקו יחד" : "הטקסט הועתק");
+    await navigator.clipboard.writeText(outputElement.textContent);
+    showTimedMessage(copyStateElement, "הטקסט הועתק");
   } catch (error) {
     showTimedMessage(
       copyStateElement,
-      "לא ניתן היה להעתיק נתונים ללוח. נסו שוב או בידקו הרשאות."
+      format.fields.some(isImageField) ? IMAGE_LINK_COPY_ERROR_MESSAGE : "לא ניתן היה להעתיק. נסו שוב.",
     );
   }
 }
@@ -1162,11 +1154,19 @@ async function ensurePublicImageUrl(formatId, fieldId) {
     return "";
   }
 
+  const webhookUrl = persistentValues.discordWebhook;
+  if (!webhookUrl) {
+    alert("כדי להעלות את התמונה לדיסקורד באופן אוטומטי (ולעקוף חסימות), יש להגדיר קישור Webhook ב'הגדרות קבועות' בתחתית העמוד.");
+    throw new Error("MISSING_WEBHOOK_URL");
+  }
+
   const pngBlob = await dataUrlToPngBlob(imageDataUrl);
   const formData = new FormData();
   formData.append("file", pngBlob, `mada-${Date.now()}.png`);
 
-  const response = await fetch(PUBLIC_IMAGE_UPLOAD_URL, {
+  const uploadUrl = webhookUrl.includes("?") ? `${webhookUrl}&wait=true` : `${webhookUrl}?wait=true`;
+
+  const response = await fetch(uploadUrl, {
     method: "POST",
     body: formData,
   });
@@ -1176,7 +1176,7 @@ async function ensurePublicImageUrl(formatId, fieldId) {
   }
 
   const payload = await response.json();
-  const publicUrl = buildTmpFilesDirectUrl(payload?.data?.url);
+  const publicUrl = payload?.attachments?.[0]?.url;
 
   if (!isPublicImageUrl(publicUrl)) {
     throw new Error("INVALID_PUBLIC_URL");
