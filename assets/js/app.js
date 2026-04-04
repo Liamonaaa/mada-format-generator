@@ -886,33 +886,54 @@ async function handleCopy(format, panel, outputElement, copyStateElement) {
   }
 
   try {
-    const imageFields = format.fields.filter(isImageField);
-    let hasAnyImage = false;
+    const textOutput = buildOutputText(format.id, { preferPublicImageUrl: false });
+    const textBlob = new Blob([textOutput], { type: "text/plain" });
+    const clipboardData = { "text/plain": textBlob };
 
-    for (const imageField of imageFields) {
-      if (hasImageAttachment(format.id, imageField.id)) {
-        hasAnyImage = true;
-        const publicUrl = await ensurePublicImageUrl(format.id, imageField.id);
-        if (!isPublicImageUrl(publicUrl)) {
-          throw new Error("PUBLIC_URL_MISSING");
+    const imageFields = format.fields.filter(isImageField);
+    const images = [];
+
+    for (const field of imageFields) {
+      const dataUrl = getImageAttachment(format.id, field.id);
+      if (dataUrl) {
+        images.push(await loadImage(dataUrl));
+      }
+    }
+
+    if (images.length > 0) {
+      const padding = 20;
+      const width = Math.max(...images.map((img) => img.naturalWidth));
+      const height = images.reduce((acc, img) => acc + img.naturalHeight, 0) + padding * (images.length - 1);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d");
+
+      if (context) {
+        let currentY = 0;
+        for (const img of images) {
+          const x = (width - img.naturalWidth) / 2;
+          context.drawImage(img, x, currentY);
+          currentY += img.naturalHeight + padding;
+        }
+
+        const pngBlob = await canvasToBlob(canvas, "image/png");
+        if (pngBlob) {
+          clipboardData["image/png"] = pngBlob;
         }
       }
     }
 
-    if (hasAnyImage) {
-      const textWithPublicLink = buildOutputText(format.id, { preferPublicImageUrl: true });
-      await navigator.clipboard.writeText(textWithPublicLink);
-      outputElement.textContent = textWithPublicLink;
-      showTimedMessage(copyStateElement, IMAGE_LINK_COPY_SUCCESS_MESSAGE);
-      return;
-    }
+    const clipboardItem = new ClipboardItem(clipboardData);
+    await navigator.clipboard.write([clipboardItem]);
 
-    await navigator.clipboard.writeText(outputElement.textContent);
-    showTimedMessage(copyStateElement, "הטקסט הועתק");
+    outputElement.textContent = textOutput;
+    showTimedMessage(copyStateElement, images.length > 0 ? "הטקסט והתמונות הועתקו יחד" : "הטקסט הועתק");
   } catch (error) {
     showTimedMessage(
       copyStateElement,
-      format.fields.some(isImageField) ? IMAGE_LINK_COPY_ERROR_MESSAGE : "לא ניתן היה להעתיק. נסו שוב.",
+      "לא ניתן היה להעתיק נתונים ללוח. נסו שוב או בידקו הרשאות."
     );
   }
 }
