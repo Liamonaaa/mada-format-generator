@@ -694,7 +694,7 @@ function bindImageField(panel, format, field) {
         showTimedMessage(copyStateElement, IMAGE_PERSIST_WARNING);
       }
     } catch (error) {
-      setFieldError(panel, field.id, IMAGE_LOAD_ERROR);
+      setFieldError(panel, field.id, `${IMAGE_LOAD_ERROR} (${error.message || error})`);
     } finally {
       fileInput.value = "";
     }
@@ -724,19 +724,7 @@ function bindImageField(panel, format, field) {
     selectImage(file);
   });
 
-  panel.addEventListener("paste", (event) => {
-    if (state.activeFormatId !== format.id) {
-      return;
-    }
-
-    const file = getImageFileFromClipboard(event.clipboardData);
-    if (!file) {
-      return;
-    }
-
-    event.preventDefault();
-    selectImage(file);
-  });
+  // Removed panel.addEventListener("paste") to prevent double-paste issues with multiple image fields
 
   uploadArea.addEventListener("dragenter", (event) => {
     if (!getImageFileFromDataTransfer(event.dataTransfer)) {
