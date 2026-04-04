@@ -209,6 +209,15 @@ function bindPersistentSettingControls() {
     const elements = persistentSettingElements[setting.id];
     elements.input.value = persistentValues[setting.id];
 
+    const autoSave = () => {
+      const nextValue = normalizeValue(elements.input.value);
+      persistentValues[setting.id] = savePersistentValue(setting, nextValue);
+      applyPersistentSettings({ syncDom: true, settingIds: [setting.id] });
+    };
+
+    elements.input.addEventListener("input", autoSave);
+    elements.input.addEventListener("blur", autoSave);
+
     elements.saveButton.addEventListener("click", () => {
       const nextValue = normalizeValue(elements.input.value);
       if (!nextValue) {
@@ -217,9 +226,8 @@ function bindPersistentSettingControls() {
         return;
       }
 
-      persistentValues[setting.id] = savePersistentValue(setting, nextValue);
+      autoSave();
       elements.input.value = persistentValues[setting.id];
-      applyPersistentSettings({ syncDom: true, settingIds: [setting.id] });
       showTimedMessage(elements.feedback, setting.saveMessage);
     });
 
