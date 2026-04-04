@@ -16,7 +16,7 @@ const IMAGE_PERSIST_WARNING = "התמונה צורפה זמנית בלבד ול�
 const IMAGE_LOAD_ERROR = "לא ניתן היה לטעון את התמונה. נסו קובץ אחר.";
 const IMAGE_LINK_COPY_SUCCESS_MESSAGE = "נוצר קישור ציבורי לתמונה והפורמט הועתק";
 const IMAGE_LINK_COPY_ERROR_MESSAGE = "לא ניתן היה ליצור קישור ציבורי לתמונה. נסו שוב.";
-const PUBLIC_IMAGE_UPLOAD_URL = "https://tmpfiles.org/api/v1/upload";
+const DISCORD_WEBHOOK_URL = ""; // יש להדביק פה את הקישור של ה-Webhook מהדיסקורד
 const MAX_PERSISTED_IMAGE_LENGTH = 900000;
 const MAX_IMAGE_DIMENSION = 1280;
 const IMAGE_COMPRESSION_QUALITY = 0.82;
@@ -54,8 +54,22 @@ const formatDefinitions = [
       { id: "name", label: "שם", placeholder: "הקלידו שם" },
       { id: "reason", label: "סיבה", placeholder: "מהי הסיבה?" },
       { id: "location", label: "מיקום", placeholder: "ציינו מיקום" },
-      { id: "image", label: "קישור לתמונה של הניידת", placeholder: "הדביקו קישור לתמונה" },
-      { id: "mapImage", label: "קישור לתמונה של המפה", placeholder: "הדביקו קישור לתמונת מפה" },
+      {
+        id: "image",
+        type: IMAGE_FIELD_TYPE,
+        label: "תמונה של הניידת",
+        helperText: IMAGE_UPLOAD_HELPER_TEXT,
+        subText: IMAGE_UPLOAD_SUBTEXT,
+        removeLabel: "הסר תמונה",
+      },
+      {
+        id: "mapImage",
+        type: IMAGE_FIELD_TYPE,
+        label: "תמונה של המפה",
+        helperText: IMAGE_UPLOAD_HELPER_TEXT,
+        subText: IMAGE_UPLOAD_SUBTEXT,
+        removeLabel: "הסר תמונה",
+      },
       { id: "commandTag", label: "תיוג הפיקוד האישי", placeholder: "הקלידו תיוג" },
     ],
     buildOutput(values) {
@@ -872,13 +886,20 @@ async function handleCopy(format, panel, outputElement, copyStateElement) {
   }
 
   try {
-    const imageField = format.fields.find(isImageField);
-    if (imageField && hasImageAttachment(format.id, imageField.id)) {
-      const publicUrl = await ensurePublicImageUrl(format.id, imageField.id);
-      if (!isPublicImageUrl(publicUrl)) {
-        throw new Error("PUBLIC_URL_MISSING");
-      }
+    const imageFields = format.fields.filter(isImageField);
+    let hasAnyImage = false;
 
+    for (const imageField of imageFields) {
+      if (hasImageAttachment(format.id, imageField.id)) {
+        hasAnyImage = true;
+        const publicUrl = await ensurePublicImageUrl(format.id, imageField.id);
+        if (!isPublicImageUrl(publicUrl)) {
+          throw new Error("PUBLIC_URL_MISSING");
+        }
+      }
+    }
+
+    if (hasAnyImage) {
       const textWithPublicLink = buildOutputText(format.id, { preferPublicImageUrl: true });
       await navigator.clipboard.writeText(textWithPublicLink);
       outputElement.textContent = textWithPublicLink;
@@ -1120,11 +1141,18 @@ async function ensurePublicImageUrl(formatId, fieldId) {
     return "";
   }
 
+  if (!DISCORD_WEBHOOK_URL) {
+    alert("שגיאה: לא הוגדר קישור Webhook של דיסקורד בקוד (DISCORD_WEBHOOK_URL).");
+    throw new Error("MISSING_WEBHOOK_URL");
+  }
+
   const pngBlob = await dataUrlToPngBlob(imageDataUrl);
   const formData = new FormData();
   formData.append("file", pngBlob, `mada-${Date.now()}.png`);
 
-  const response = await fetch(PUBLIC_IMAGE_UPLOAD_URL, {
+  const uploadUrl = DISCORD_WEBHOOK_URL.includes("?") ? `${DISCORD_WEBHOOK_URL}&wait=true` : `${DISCORD_WEBHOOK_URL}?wait=true`;
+
+  const response = await fetch(uploadUrl, {
     method: "POST",
     body: formData,
   });
@@ -1134,7 +1162,8 @@ async function ensurePublicImageUrl(formatId, fieldId) {
   }
 
   const payload = await response.json();
-  const publicUrl = buildTmpFilesDirectUrl(payload?.data?.url);
+  const publicUrl = payload?.attachments?.[0]?.url;
+
   if (!isPublicImageUrl(publicUrl)) {
     throw new Error("INVALID_PUBLIC_URL");
   }
