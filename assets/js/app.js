@@ -156,7 +156,7 @@ const legacyPersistentSettingDefinitions = [
 ];
 
 function formatFieldLine(label, value) {
-  return `**${label}:** ${value}`;
+  return `${label}: ${value}`;
 }
 
 function buildFormatOutput(title, lines) {
