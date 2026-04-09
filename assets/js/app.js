@@ -163,23 +163,37 @@ function buildFormatOutput(title, lines) {
   return [title, "", ...lines].join("\n");
 }
 
+function getFieldDefaultValue(field) {
+  if (isImageField(field)) {
+    return "";
+  }
+
+  return typeof field.defaultValue === "string" ? field.defaultValue : "";
+}
+
 const formatDefinitions = [
   {
     id: "role-exit",
     tabTitle: "ירידה מתפקיד",
-    tabCopy: "פורמט מהיר לירידה מתפקיד עם הערת חובה קבועה.",
+    tabCopy: "פורמט מהיר לירידה מתפקיד.",
     title: "פורמט ירידה מתפקיד",
     fields: [
       { id: "name", label: "שם", placeholder: "הקלידו שם" },
       { id: "reason", label: "סיבה", placeholder: "הקלידו סיבה" },
       {
+        id: "roleExitCount",
+        label: "כמות ירידה מתפקיד",
+        placeholder: "הקלידו כמות",
+        defaultValue: "0/3",
+      },
+      {
         id: "mdaAmount",
-        label: "כמות המד\"א בתפקיד [ יש לצרף תמונת מוקדן ]",
+        label: "כמות המדא בתפקיד",
         placeholder: "הקלידו כמות",
       },
       {
         id: "commandTag",
-        label: "תיוג הפיקוד [ בהתאם ליחידה ]",
+        label: "תיוג פיקוד",
         placeholder: "הקלידו תיוג פיקוד",
       },
     ],
@@ -187,10 +201,9 @@ const formatDefinitions = [
       return buildFormatOutput("פורמט ירידה מתפקיד", [
         formatFieldLine("שם", values.name),
         formatFieldLine("סיבה", values.reason),
-        formatFieldLine("כמות ירידה מתפקיד [ שבועי ]", "[0/3]"),
-        formatFieldLine('כמות המד"א בתפקיד [ יש לצרף תמונת מוקדן ]', values.mdaAmount),
-        formatFieldLine("תיוג הפיקוד [ בהתאם ליחידה ]", values.commandTag),
-        '__חובה שיהיה לפחות 7 מד"א בתפקיד על מנת לרדת מתפקיד!__',
+        formatFieldLine("כמות ירידה מתפקיד", values.roleExitCount),
+        formatFieldLine("כמות המדא בתפקיד", values.mdaAmount),
+        formatFieldLine("תיוג פיקוד", values.commandTag),
       ]);
     },
   },
@@ -202,7 +215,7 @@ const formatDefinitions = [
     fields: [
       { id: "name", label: "שם", placeholder: "הקלידו שם" },
       { id: "reason", label: "סיבה", placeholder: "הקלידו סיבה" },
-      { id: "location", label: "מיקום [ במספר ]", placeholder: "הקלידו מיקום" },
+      { id: "location", label: "מיקום", placeholder: "הקלידו מיקום" },
       {
         id: "image",
         type: IMAGE_FIELD_TYPE,
@@ -221,7 +234,7 @@ const formatDefinitions = [
       },
       {
         id: "commandTag",
-        label: "תיוג הפיקוד [ בהתאם ליחידה ]",
+        label: "תיוג פיקוד",
         placeholder: "הקלידו תיוג פיקוד",
       },
     ],
@@ -229,10 +242,10 @@ const formatDefinitions = [
       return buildFormatOutput("פורמט הפקרת ניידת", [
         formatFieldLine("שם", values.name),
         formatFieldLine("סיבה", values.reason),
-        formatFieldLine("מיקום [ במספר ]", values.location),
+        formatFieldLine("מיקום", values.location),
         formatFieldLine("תמונת הניידת", values.image),
         formatFieldLine("תמונת מיקום ההפקרה במפה", values.mapImage),
-        formatFieldLine("תיוג הפיקוד [ בהתאם ליחידה ]", values.commandTag),
+        formatFieldLine("תיוג פיקוד", values.commandTag),
       ]);
     },
   },
@@ -248,7 +261,7 @@ const formatDefinitions = [
       { id: "cost", label: "עלות ההזמנה", placeholder: "הקלידו עלות הזמנה" },
       {
         id: "commandTag",
-        label: "תיוג הפיקוד [ בהתאם ליחידה ]",
+        label: "תיוג פיקוד",
         placeholder: "הקלידו תיוג פיקוד",
       },
     ],
@@ -258,7 +271,7 @@ const formatDefinitions = [
         formatFieldLine("כמות", values.quantity),
         formatFieldLine("מסעדה", values.restaurant),
         formatFieldLine("עלות ההזמנה", values.cost),
-        formatFieldLine("תיוג הפיקוד [ בהתאם ליחידה ]", values.commandTag),
+        formatFieldLine("תיוג פיקוד", values.commandTag),
       ]);
     },
   },
@@ -271,7 +284,7 @@ const formatDefinitions = [
       { id: "audience", label: "עבור מי ההגרלה", placeholder: "הקלידו עבור מי ההגרלה" },
       {
         id: "amount",
-        label: "סכום ההגרלה [ מינימום 30,000 ]",
+        label: "סכום ההגרלה",
         placeholder: "הקלידו סכום הגרלה",
       },
       { id: "winners", label: "כמות זוכים", placeholder: "הקלידו כמות זוכים" },
@@ -283,18 +296,18 @@ const formatDefinitions = [
       },
       {
         id: "commandTag",
-        label: "תיוג הפיקוד [ בהתאם ליחידה ]",
+        label: "תיוג פיקוד",
         placeholder: "הקלידו תיוג פיקוד",
       },
     ],
     buildOutput(values) {
       return buildFormatOutput("פורמט הגרלות", [
         formatFieldLine("עבור מי ההגרלה", values.audience),
-        formatFieldLine("סכום ההגרלה [ מינימום 30,000 ]", values.amount),
+        formatFieldLine("סכום ההגרלה", values.amount),
         formatFieldLine("כמות זוכים", values.winners),
         formatFieldLine("זמן סיום ההגרלה", values.endTime),
         formatFieldLine("מה יהיה כתוב בתיאור ההגרלה", values.description),
-        formatFieldLine("תיוג הפיקוד [ בהתאם ליחידה ]", values.commandTag),
+        formatFieldLine("תיוג פיקוד", values.commandTag),
       ]);
     },
   },
@@ -308,6 +321,7 @@ const formatDefinitions = [
       { id: "duration", label: "כמות זמן", placeholder: "הקלידו כמות זמן" },
       { id: "reason", label: "סיבה", placeholder: "הקלידו סיבה" },
       { id: "proof", label: "הוכחה", placeholder: "הקלידו הוכחה" },
+      { id: "commandTag", label: "תיוג פיקוד", placeholder: "הקלידו תיוג פיקוד" },
     ],
     buildOutput(values) {
       return buildFormatOutput("הוספת שעות", [
@@ -315,6 +329,7 @@ const formatDefinitions = [
         `כמות זמן: ${values.duration}`,
         `סיבה: ${values.reason}`,
         `הוכחה: ${values.proof}`,
+        `תיוג פיקוד: ${values.commandTag}`,
         "כמות הפעמים שנשלח הפורמט: 0/3",
       ]);
     },
@@ -390,6 +405,7 @@ const persistentSettingDefinitions = [
       "vehicle-abandonment": "commandTag",
       "food-purchase": "commandTag",
       lotteries: "commandTag",
+      "add-hours": "commandTag",
       "remove-hours": "commandTag",
     },
   },
@@ -399,7 +415,7 @@ const defaultState = {
   activeFormatId: formatDefinitions[0].id,
   values: formatDefinitions.reduce((formatsMap, format) => {
     formatsMap[format.id] = format.fields.reduce((fieldMap, field) => {
-      fieldMap[field.id] = "";
+      fieldMap[field.id] = getFieldDefaultValue(field);
       return fieldMap;
     }, {});
     return formatsMap;
@@ -515,7 +531,12 @@ function loadState() {
           continue;
         }
 
-        normalizedState.values[format.id][field.id] = String(savedValues[field.id] || "");
+        normalizedState.values[format.id][field.id] = Object.prototype.hasOwnProperty.call(
+          savedValues,
+          field.id,
+        )
+          ? String(savedValues[field.id] ?? "")
+          : getFieldDefaultValue(field);
       }
     }
 
@@ -1174,9 +1195,10 @@ function clearFormatFields(format, panel) {
       continue;
     }
 
-    updateFieldValue(format.id, field.id, "");
+    const nextValue = getFieldDefaultValue(field);
+    updateFieldValue(format.id, field.id, nextValue);
     const input = form.elements.namedItem(field.id);
-    input.value = "";
+    input.value = nextValue;
     setFieldError(panel, field.id, "");
   }
 
