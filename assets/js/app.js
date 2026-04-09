@@ -22,7 +22,7 @@ const MAX_PERSISTED_IMAGE_LENGTH = 900000;
 const MAX_IMAGE_DIMENSION = 1280;
 const IMAGE_COMPRESSION_QUALITY = 0.82;
 
-const formatDefinitions = [
+const legacyFormatDefinitions = [
   {
     id: "role-exit",
     tabTitle: "ירידה מתפקיד",
@@ -108,7 +108,7 @@ const formatDefinitions = [
   },
 ];
 
-const persistentSettingDefinitions = [
+const legacyPersistentSettingDefinitions = [
   {
     id: "discordWebhook",
     storageKey: STORAGE_KEYS.discordWebhook,
@@ -151,6 +151,246 @@ const persistentSettingDefinitions = [
       "role-exit": "commandTag",
       "vehicle-abandonment": "commandTag",
       "food-purchase": "commandTag",
+    },
+  },
+];
+
+function formatFieldLine(label, value) {
+  return `**${label}:** ${value}`;
+}
+
+function buildFormatOutput(title, lines) {
+  return [title, "", ...lines].join("\n");
+}
+
+const formatDefinitions = [
+  {
+    id: "role-exit",
+    tabTitle: "ירידה מתפקיד",
+    tabCopy: "פורמט מהיר לירידה מתפקיד עם הערת חובה קבועה.",
+    title: "פורמט ירידה מתפקיד",
+    fields: [
+      { id: "name", label: "שם", placeholder: "הקלידו שם" },
+      { id: "reason", label: "סיבה", placeholder: "הקלידו סיבה" },
+      {
+        id: "mdaAmount",
+        label: "כמות המד\"א בתפקיד [ יש לצרף תמונת מוקדן ]",
+        placeholder: "הקלידו כמות",
+      },
+      {
+        id: "commandTag",
+        label: "תיוג הפיקוד [ בהתאם ליחידה ]",
+        placeholder: "הקלידו תיוג פיקוד",
+      },
+    ],
+    buildOutput(values) {
+      return buildFormatOutput("פורמט ירידה מתפקיד", [
+        formatFieldLine("שם", values.name),
+        formatFieldLine("סיבה", values.reason),
+        formatFieldLine("כמות ירידה מתפקיד [ שבועי ]", "[0/3]"),
+        formatFieldLine('כמות המד"א בתפקיד [ יש לצרף תמונת מוקדן ]', values.mdaAmount),
+        formatFieldLine("תיוג הפיקוד [ בהתאם ליחידה ]", values.commandTag),
+        '__חובה שיהיה לפחות 7 מד"א בתפקיד על מנת לרדת מתפקיד!__',
+      ]);
+    },
+  },
+  {
+    id: "vehicle-abandonment",
+    tabTitle: "הפקרת ניידת",
+    tabCopy: "טופס מהיר לדיווח מסודר על הפקרת ניידת.",
+    title: "פורמט הפקרת ניידת",
+    fields: [
+      { id: "name", label: "שם", placeholder: "הקלידו שם" },
+      { id: "reason", label: "סיבה", placeholder: "הקלידו סיבה" },
+      { id: "location", label: "מיקום [ במספר ]", placeholder: "הקלידו מיקום" },
+      {
+        id: "image",
+        type: IMAGE_FIELD_TYPE,
+        label: "תמונת הניידת",
+        helperText: IMAGE_UPLOAD_HELPER_TEXT,
+        subText: IMAGE_UPLOAD_SUBTEXT,
+        removeLabel: "הסר תמונה",
+      },
+      {
+        id: "mapImage",
+        type: IMAGE_FIELD_TYPE,
+        label: "תמונת מיקום ההפקרה במפה",
+        helperText: IMAGE_UPLOAD_HELPER_TEXT,
+        subText: IMAGE_UPLOAD_SUBTEXT,
+        removeLabel: "הסר תמונה",
+      },
+      {
+        id: "commandTag",
+        label: "תיוג הפיקוד [ בהתאם ליחידה ]",
+        placeholder: "הקלידו תיוג פיקוד",
+      },
+    ],
+    buildOutput(values) {
+      return buildFormatOutput("פורמט הפקרת ניידת", [
+        formatFieldLine("שם", values.name),
+        formatFieldLine("סיבה", values.reason),
+        formatFieldLine("מיקום [ במספר ]", values.location),
+        formatFieldLine("תמונת הניידת", values.image),
+        formatFieldLine("תמונת מיקום ההפקרה במפה", values.mapImage),
+        formatFieldLine("תיוג הפיקוד [ בהתאם ליחידה ]", values.commandTag),
+      ]);
+    },
+  },
+  {
+    id: "food-purchase",
+    tabTitle: "קניית אוכל",
+    tabCopy: "יצירת פורמט מסודר על קניית אוכל.",
+    title: "פורמט קניית אוכל",
+    fields: [
+      { id: "mdaName", label: "שם מלא", placeholder: "הקלידו שם מלא" },
+      { id: "quantity", label: "כמות", placeholder: "הקלידו כמות" },
+      { id: "restaurant", label: "מסעדה", placeholder: "הקלידו מסעדה" },
+      { id: "cost", label: "עלות ההזמנה", placeholder: "הקלידו עלות הזמנה" },
+      {
+        id: "commandTag",
+        label: "תיוג הפיקוד [ בהתאם ליחידה ]",
+        placeholder: "הקלידו תיוג פיקוד",
+      },
+    ],
+    buildOutput(values) {
+      return buildFormatOutput("פורמט קניית אוכל", [
+        formatFieldLine("שם מלא", values.mdaName),
+        formatFieldLine("כמות", values.quantity),
+        formatFieldLine("מסעדה", values.restaurant),
+        formatFieldLine("עלות ההזמנה", values.cost),
+        formatFieldLine("תיוג הפיקוד [ בהתאם ליחידה ]", values.commandTag),
+      ]);
+    },
+  },
+  {
+    id: "lotteries",
+    tabTitle: "הגרלות",
+    tabCopy: "פורמט מהיר לפתיחת הגרלה מסודרת.",
+    title: "פורמט הגרלות",
+    fields: [
+      { id: "audience", label: "עבור מי ההגרלה", placeholder: "הקלידו עבור מי ההגרלה" },
+      {
+        id: "amount",
+        label: "סכום ההגרלה [ מינימום 30,000 ]",
+        placeholder: "הקלידו סכום הגרלה",
+      },
+      { id: "winners", label: "כמות זוכים", placeholder: "הקלידו כמות זוכים" },
+      { id: "endTime", label: "זמן סיום ההגרלה", placeholder: "הקלידו זמן סיום" },
+      {
+        id: "description",
+        label: "מה יהיה כתוב בתיאור ההגרלה",
+        placeholder: "הקלידו תיאור הגרלה",
+      },
+      {
+        id: "commandTag",
+        label: "תיוג הפיקוד [ בהתאם ליחידה ]",
+        placeholder: "הקלידו תיוג פיקוד",
+      },
+    ],
+    buildOutput(values) {
+      return buildFormatOutput("פורמט הגרלות", [
+        formatFieldLine("עבור מי ההגרלה", values.audience),
+        formatFieldLine("סכום ההגרלה [ מינימום 30,000 ]", values.amount),
+        formatFieldLine("כמות זוכים", values.winners),
+        formatFieldLine("זמן סיום ההגרלה", values.endTime),
+        formatFieldLine("מה יהיה כתוב בתיאור ההגרלה", values.description),
+        formatFieldLine("תיוג הפיקוד [ בהתאם ליחידה ]", values.commandTag),
+      ]);
+    },
+  },
+  {
+    id: "add-hours",
+    tabTitle: "הוספת שעות",
+    tabCopy: "פורמט מהיר להוספת שעות עם שורת מעקב קבועה.",
+    title: "הוספת שעות",
+    fields: [
+      { id: "mdaName", label: "שם המדא", placeholder: "הקלידו שם מד\"א" },
+      { id: "duration", label: "כמות זמן", placeholder: "הקלידו כמות זמן" },
+      { id: "reason", label: "סיבה", placeholder: "הקלידו סיבה" },
+      { id: "proof", label: "הוכחה", placeholder: "הקלידו הוכחה" },
+    ],
+    buildOutput(values) {
+      return buildFormatOutput("הוספת שעות", [
+        `שם המדא: ${values.mdaName}`,
+        `כמות זמן: ${values.duration}`,
+        `סיבה: ${values.reason}`,
+        `הוכחה: ${values.proof}`,
+        "כמות הפעמים שנשלח הפורמט: 0/3",
+      ]);
+    },
+  },
+  {
+    id: "remove-hours",
+    tabTitle: "הורדת שעות",
+    tabCopy: "פורמט מהיר להורדת שעות עם הוכחה מצורפת.",
+    title: "הורדת שעות",
+    fields: [
+      { id: "amount", label: "כמה להוריד?", placeholder: "הקלידו כמות" },
+      { id: "reason", label: "סיבה", placeholder: "הקלידו סיבה" },
+      {
+        id: "commandTag",
+        label: "תיוג פיקוד",
+        placeholder: "הקלידו תיוג פיקוד",
+      },
+      { id: "proof", label: "הוכחה", placeholder: "הקלידו הוכחה" },
+    ],
+    buildOutput(values) {
+      return buildFormatOutput("הורדת שעות", [
+        `כמה להוריד?: ${values.amount}`,
+        `סיבה: ${values.reason}`,
+        `תיוג פיקוד: ${values.commandTag}`,
+        `הוכחה: ${values.proof}`,
+      ]);
+    },
+  },
+];
+
+const persistentSettingDefinitions = [
+  {
+    id: "discordWebhook",
+    storageKey: STORAGE_KEYS.discordWebhook,
+    inputId: "discord-webhook-input",
+    saveButtonId: "discord-webhook-save",
+    clearButtonId: "discord-webhook-clear",
+    feedbackId: "discord-webhook-feedback",
+    emptyMessage: "יש להזין קישור Webhook לפני שמירה.",
+    saveMessage: "קישור ה-Webhook נשמר בהצלחה",
+    clearMessage: "קישור ה-Webhook נמחק",
+    targets: {},
+  },
+  {
+    id: "fixedName",
+    storageKey: STORAGE_KEYS.fixedName,
+    inputId: "fixed-name-input",
+    saveButtonId: "fixed-name-save",
+    clearButtonId: "fixed-name-clear",
+    feedbackId: "fixed-name-feedback",
+    emptyMessage: "יש להזין שם לפני שמירה.",
+    saveMessage: "השם הקבוע נשמר",
+    clearMessage: "השם הקבוע נמחק",
+    targets: {
+      "role-exit": "name",
+      "vehicle-abandonment": "name",
+      "food-purchase": "mdaName",
+      "add-hours": "mdaName",
+    },
+  },
+  {
+    id: "fixedCommandTag",
+    storageKey: STORAGE_KEYS.fixedCommandTag,
+    inputId: "fixed-command-tag-input",
+    saveButtonId: "fixed-command-tag-save",
+    clearButtonId: "fixed-command-tag-clear",
+    feedbackId: "fixed-command-tag-feedback",
+    emptyMessage: "יש להזין תיוג לפני שמירה.",
+    saveMessage: "התיוג הקבוע נשמר",
+    clearMessage: "התיוג הקבוע נמחק",
+    targets: {
+      "role-exit": "commandTag",
+      "vehicle-abandonment": "commandTag",
+      "food-purchase": "commandTag",
+      lotteries: "commandTag",
+      "remove-hours": "commandTag",
     },
   },
 ];
