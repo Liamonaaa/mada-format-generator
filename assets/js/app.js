@@ -358,6 +358,45 @@ const formatDefinitions = [
       ]);
     },
   },
+  {
+    id: "patrol-report",
+    tabTitle: "דיווח פטרול",
+    tabCopy: "טופס מהיר לדיווח פטרול בדרום.",
+    title: "פורמט דיווח",
+    fields: [
+      {
+        id: "patrolCount",
+        label: "כמות הפעמים שביצעת פטרול בדרום (X/5)",
+        placeholder: "0",
+        type: "number",
+        min: 0,
+        max: 5,
+        defaultValue: "0",
+      },
+      { id: "mdaAmount", label: 'כמות מד"א בעיר', placeholder: "הקלידו כמות" },
+      {
+        id: "dispatcherImage",
+        type: IMAGE_FIELD_TYPE,
+        label: "צילום מוקדן",
+        helperText: IMAGE_UPLOAD_HELPER_TEXT,
+        subText: IMAGE_UPLOAD_SUBTEXT,
+        removeLabel: "הסר תמונה",
+      },
+      {
+        id: "commandTag",
+        label: "תיוג פיקוד חובשים",
+        placeholder: "הקלידו תיוג פיקוד",
+      },
+    ],
+    buildOutput(values) {
+      return buildFormatOutput("פורמט דיווח:", [
+        `כמות הפעמים שביצעת פטרול בדרום (${values.patrolCount || 0}/5):`,
+        formatFieldLine('כמות מד"א בעיר', values.mdaAmount),
+        formatFieldLine("צילום מוקדן", values.dispatcherImage),
+        formatFieldLine("תיוג פיקוד חובשים", values.commandTag),
+      ]);
+    },
+  },
 ];
 
 const persistentSettingDefinitions = [
@@ -407,6 +446,7 @@ const persistentSettingDefinitions = [
       lotteries: "commandTag",
       "add-hours": "commandTag",
       "remove-hours": "commandTag",
+      "patrol-report": "commandTag",
     },
   },
 ];
@@ -881,6 +921,10 @@ function renderFieldMarkup(format, field) {
     return renderImageFieldMarkup(format, field);
   }
 
+  const inputType = field.type === "number" ? "number" : "text";
+  const minAttr = field.type === "number" && field.min !== undefined ? ` min="${field.min}"` : "";
+  const maxAttr = field.type === "number" && field.max !== undefined ? ` max="${field.max}"` : "";
+
   return `
     <div class="field-group" data-field-group="${field.id}">
       <label class="field-label" for="${format.id}-${field.id}">${field.label}</label>
@@ -888,7 +932,7 @@ function renderFieldMarkup(format, field) {
         class="field-input"
         id="${format.id}-${field.id}"
         name="${field.id}"
-        type="text"
+        type="${inputType}"${minAttr}${maxAttr}
         autocomplete="off"
         placeholder="${field.placeholder}"
         value="${escapeHtml(state.values[format.id][field.id])}"
