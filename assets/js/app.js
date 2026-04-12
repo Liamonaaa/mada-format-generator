@@ -319,53 +319,6 @@ const formatDefinitions = [
     },
   },
   {
-    id: "add-hours",
-    tabTitle: "הוספת שעות",
-    tabCopy: "פורמט מהיר להוספת שעות עם שורת מעקב קבועה.",
-    title: "הוספת שעות",
-    fields: [
-      { id: "mdaName", label: "שם המדא", placeholder: "הקלידו שם מד\"א" },
-      { id: "duration", label: "כמות זמן", placeholder: "הקלידו כמות זמן" },
-      { id: "reason", label: "סיבה", placeholder: "הקלידו סיבה" },
-      { id: "proof", label: "הוכחה", placeholder: "הקלידו הוכחה" },
-      { id: "commandTag", label: "תיוג פיקוד", placeholder: "הקלידו תיוג פיקוד" },
-    ],
-    buildOutput(values) {
-      return buildFormatOutput("הוספת שעות", [
-        `שם המדא: ${values.mdaName}`,
-        `כמות זמן: ${values.duration}`,
-        `סיבה: ${values.reason}`,
-        `הוכחה: ${values.proof}`,
-        `תיוג פיקוד: ${values.commandTag}`,
-        "כמות הפעמים שנשלח הפורמט: 0/3",
-      ]);
-    },
-  },
-  {
-    id: "remove-hours",
-    tabTitle: "הורדת שעות",
-    tabCopy: "פורמט מהיר להורדת שעות עם הוכחה מצורפת.",
-    title: "הורדת שעות",
-    fields: [
-      { id: "amount", label: "כמה להוריד?", placeholder: "הקלידו כמות", type: "number", min: 1 },
-      { id: "reason", label: "סיבה", placeholder: "הקלידו סיבה" },
-      {
-        id: "commandTag",
-        label: "תיוג פיקוד",
-        placeholder: "הקלידו תיוג פיקוד",
-      },
-      { id: "proof", label: "הוכחה", placeholder: "הקלידו הוכחה" },
-    ],
-    buildOutput(values) {
-      return buildFormatOutput("הורדת שעות", [
-        `כמה להוריד?: ${values.amount}`,
-        `סיבה: ${values.reason}`,
-        `תיוג פיקוד: ${values.commandTag}`,
-        `הוכחה: ${values.proof}`,
-      ]);
-    },
-  },
-  {
     id: "patrol-report",
     tabTitle: "דיווח פטרול",
     tabCopy: "טופס מהיר לדיווח פטרול בדרום.",
@@ -433,7 +386,6 @@ const persistentSettingDefinitions = [
       "role-exit": "name",
       "vehicle-abandonment": "name",
       "food-purchase": "mdaName",
-      "add-hours": "mdaName",
     },
   },
   {
@@ -451,8 +403,6 @@ const persistentSettingDefinitions = [
       "vehicle-abandonment": "commandTag",
       "food-purchase": "commandTag",
       lotteries: "commandTag",
-      "add-hours": "commandTag",
-      "remove-hours": "commandTag",
       "patrol-report": "commandTag",
     },
   },
