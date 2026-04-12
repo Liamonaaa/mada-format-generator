@@ -464,10 +464,25 @@ for (const setting of persistentSettingDefinitions) {
 renderTabs();
 renderPanels();
 bindPersistentSettingControls();
+bindGlobalControls();
 syncActiveView();
 
 function isImageField(field) {
   return field.type === IMAGE_FIELD_TYPE;
+}
+
+function bindGlobalControls() {
+  const clearAllButton = document.getElementById("clear-all-formats");
+  if (clearAllButton) {
+    clearAllButton.addEventListener("click", () => {
+      for (const format of formatDefinitions) {
+        const panel = getPanel(format.id);
+        if (panel) {
+          clearFormatFields(format, panel);
+        }
+      }
+    });
+  }
 }
 
 function bindPersistentSettingControls() {
