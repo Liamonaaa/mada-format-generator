@@ -183,13 +183,18 @@ const formatDefinitions = [
       {
         id: "roleExitCount",
         label: "כמות ירידה מתפקיד",
-        placeholder: "הקלידו כמות",
-        defaultValue: "0/3",
+        placeholder: "0",
+        type: "number",
+        min: 0,
+        max: 3,
+        defaultValue: "0",
       },
       {
         id: "mdaAmount",
         label: "כמות המדא בתפקיד",
         placeholder: "הקלידו כמות",
+        type: "number",
+        min: 0,
       },
       {
         id: "commandTag",
@@ -201,7 +206,7 @@ const formatDefinitions = [
       return buildFormatOutput("פורמט ירידה מתפקיד", [
         formatFieldLine("שם", values.name),
         formatFieldLine("סיבה", values.reason),
-        formatFieldLine("כמות ירידה מתפקיד", values.roleExitCount),
+        formatFieldLine("כמות ירידה מתפקיד", `${values.roleExitCount || 0}/3`),
         formatFieldLine("כמות המדא בתפקיד", values.mdaAmount),
         formatFieldLine("תיוג פיקוד", values.commandTag),
       ]);
@@ -256,9 +261,9 @@ const formatDefinitions = [
     title: "פורמט קניית אוכל",
     fields: [
       { id: "mdaName", label: "שם מלא", placeholder: "הקלידו שם מלא" },
-      { id: "quantity", label: "כמות", placeholder: "הקלידו כמות" },
+      { id: "quantity", label: "כמות", placeholder: "הקלידו כמות", type: "number", min: 1 },
       { id: "restaurant", label: "מסעדה", placeholder: "הקלידו מסעדה" },
-      { id: "cost", label: "עלות ההזמנה", placeholder: "הקלידו עלות הזמנה" },
+      { id: "cost", label: "עלות ההזמנה", placeholder: "הקלידו עלות הזמנה", type: "number", min: 0 },
       {
         id: "commandTag",
         label: "תיוג פיקוד",
@@ -286,8 +291,10 @@ const formatDefinitions = [
         id: "amount",
         label: "סכום ההגרלה",
         placeholder: "הקלידו סכום הגרלה",
+        type: "number",
+        min: 0,
       },
-      { id: "winners", label: "כמות זוכים", placeholder: "הקלידו כמות זוכים" },
+      { id: "winners", label: "כמות זוכים", placeholder: "הקלידו כמות זוכים", type: "number", min: 1 },
       { id: "endTime", label: "זמן סיום ההגרלה", placeholder: "הקלידו זמן סיום" },
       {
         id: "description",
@@ -340,7 +347,7 @@ const formatDefinitions = [
     tabCopy: "פורמט מהיר להורדת שעות עם הוכחה מצורפת.",
     title: "הורדת שעות",
     fields: [
-      { id: "amount", label: "כמה להוריד?", placeholder: "הקלידו כמות" },
+      { id: "amount", label: "כמה להוריד?", placeholder: "הקלידו כמות", type: "number", min: 1 },
       { id: "reason", label: "סיבה", placeholder: "הקלידו סיבה" },
       {
         id: "commandTag",
