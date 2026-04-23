@@ -326,11 +326,11 @@ const formatDefinitions = [
     fields: [
       {
         id: "patrolCount",
-        label: "כמות הפעמים שביצעת פטרול בדרום (X/5)",
+        label: "כמות הפעמים שביצעת פטרול בדרום (X/7)",
         placeholder: "0",
         type: "number",
         min: 0,
-        max: 5,
+        max: 7,
         defaultValue: "0",
       },
       { id: "mdaAmount", label: 'כמות מד"א בעיר', placeholder: "הקלידו כמות" },
@@ -350,7 +350,7 @@ const formatDefinitions = [
     ],
     buildOutput(values) {
       return buildFormatOutput("פורמט דיווח:", [
-        `כמות הפעמים שביצעת פטרול בדרום (${values.patrolCount || 0}/5):`,
+        `כמות הפעמים שביצעת פטרול בדרום (${values.patrolCount || 0}/7):`,
         formatFieldLine('כמות מד"א בעיר', values.mdaAmount),
         formatFieldLine("צילום מוקדן", values.dispatcherImage),
         formatFieldLine("תיוג פיקוד חובשים", values.commandTag),
