@@ -471,6 +471,10 @@ function isImageField(field) {
   return field.type === IMAGE_FIELD_TYPE;
 }
 
+function isFieldRequired(field) {
+  return field.required === true;
+}
+
 function bindGlobalControls() {
   const clearAllButton = document.getElementById("clear-all-formats");
   if (clearAllButton) {
@@ -1132,6 +1136,11 @@ function getImageOutputValue(formatId, fieldId, { preferPublicImageUrl = true } 
 }
 
 function validateField(panel, format, field, value = "") {
+  if (!isFieldRequired(field)) {
+    setFieldError(panel, field.id, "");
+    return true;
+  }
+
   const message = isImageField(field)
     ? hasImageAttachment(format.id, field.id)
       ? ""
